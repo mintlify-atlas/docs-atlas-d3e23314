@@ -1,0 +1,185 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Epic Online Services Godot",
+  "projectDescription": "GDExtension plugin for integrating Epic Online Services into Godot 4.2+ with high-level and low-level APIs for multiplayer, authentication, achievements, and more.",
+  "theme": "palm",
+  "primaryColor": "#478CBF",
+  "lightColor": "#5FB0EF",
+  "darkColor": "#355A7D",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/high-level-vs-gdextension",
+              "concepts/initialization",
+              "concepts/authentication"
+            ]
+          },
+          {
+            "group": "Platform Setup",
+            "pages": [
+              "platforms/windows",
+              "platforms/android",
+              "platforms/ios",
+              "platforms/linux",
+              "platforms/macos"
+            ]
+          },
+          {
+            "group": "High Level API",
+            "pages": [
+              "api/hplatform",
+              "api/hauth",
+              "api/hachievements",
+              "api/hfriends",
+              "api/hstats",
+              "api/hleaderboards",
+              "api/hlobbies",
+              "api/hp2p",
+              "api/hlog"
+            ]
+          },
+          {
+            "group": "GDExtension API",
+            "pages": [
+              "gdextension/overview",
+              "gdextension/eos-interface",
+              "gdextension/ieos-interface"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/authentication-methods",
+              "features/achievements",
+              "features/friends-social",
+              "features/stats-leaderboards",
+              "features/lobbies-sessions",
+              "features/p2p-networking",
+              "features/voice-rtc",
+              "features/player-data-storage",
+              "features/ecommerce",
+              "features/anti-cheat"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/development-setup",
+              "guides/exporting-games",
+              "guides/bootstrapping-eos",
+              "guides/multiplayer-setup",
+              "guides/social-overlay"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "High Level Classes",
+            "pages": [
+              "reference/hplatform",
+              "reference/hauth",
+              "reference/hachievements",
+              "reference/hfriends",
+              "reference/hstats",
+              "reference/hleaderboards",
+              "reference/hlobbies",
+              "reference/hp2p",
+              "reference/hsessions",
+              "reference/hlog",
+              "reference/hcredentials"
+            ]
+          },
+          {
+            "group": "GDExtension Interfaces",
+            "pages": [
+              "reference/auth-interface",
+              "reference/connect-interface",
+              "reference/achievements-interface",
+              "reference/friends-interface",
+              "reference/stats-interface",
+              "reference/leaderboards-interface",
+              "reference/lobby-interface",
+              "reference/sessions-interface",
+              "reference/p2p-interface",
+              "reference/rtc-interface",
+              "reference/ui-interface",
+              "reference/userinfo-interface",
+              "reference/presence-interface",
+              "reference/metrics-interface",
+              "reference/mods-interface",
+              "reference/ecom-interface",
+              "reference/playerdatastorage-interface",
+              "reference/titlestorage-interface",
+              "reference/anticheat-interface"
+            ]
+          },
+          {
+            "group": "Multiplayer",
+            "pages": [
+              "reference/eosg-multiplayer-peer",
+              "reference/eosg-packet-peer-mediator"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "High-level and low-level API for Epic Online Services integration",
+    "Cross-platform multiplayer with lobbies, sessions, and P2P networking",
+    "Multiple authentication methods (Epic Games, Steam, Discord, Anonymous)",
+    "Achievements, stats, and leaderboards with social features",
+    "Voice chat and RTC audio support",
+    "Social overlay on Windows with friends and presence",
+    "Player data storage and title storage",
+    "Ecommerce integration with Epic Games Store",
+    "Anti-cheat client and server support",
+    "Support for Windows, Linux, Android, macOS, and iOS platforms"
+  ],
+  "publicApiSurface": [
+    "HPlatform.setup_eos_async()",
+    "HPlatform.initialize_async()",
+    "HPlatform.create_platform_async()",
+    "HAuth.login_devtool_async()",
+    "HAuth.login_anonymous_async()",
+    "HAuth.login_epic_account_async()",
+    "HAuth.login_steam_async()",
+    "HAuth.logout_async()",
+    "HAchievements.query_definitions_async()",
+    "HAchievements.query_player_achievements_async()",
+    "HAchievements.unlock_achievement_async()",
+    "HFriends.query_friends_async()",
+    "HFriends.get_friends_list()",
+    "HStats.ingest_stat_async()",
+    "HStats.query_stats_async()",
+    "HLeaderboards.get_leaderboard_records_async()",
+    "HLeaderboards.query_leaderboard_user_scores_async()",
+    "HLobbies.create_lobby_async()",
+    "HLobbies.join_lobby_async()",
+    "HLobbies.search_lobbies_async()",
+    "HP2P.send_packet()",
+    "HP2P.receive_packet()",
+    "EOSGMultiplayerPeer",
+    "EOS.Platform.InitializeOptions",
+    "EOS.Platform.CreateOptions",
+    "EOS.Auth.LoginOptions",
+    "EOS.Connect.LoginOptions",
+    "IEOS (low-level interface)"
+  ]
+}
