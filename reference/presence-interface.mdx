@@ -1,0 +1,172 @@
+---
+title: Presence Interface
+description: API reference for the EOS Presence Interface in Godot
+---
+
+The Presence Interface manages user presence and rich presence information for the Epic Games Social Overlay.
+
+## Overview
+
+The Presence Interface provides:
+
+- Setting and updating user presence
+- Querying friend presence
+- Rich presence with custom status text
+- Join info for game invites
+
+All methods are called on the `IEOS` singleton instance and use Epic Account IDs.
+
+## Methods
+
+### presence_interface_query_presence
+
+```gdscript
+IEOS.presence_interface_query_presence(options: RefCounted) -> void
+```
+
+Queries presence information for a user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID making request
+  - `target_user_id` - Epic Account ID to query
+  - `client_data` - Optional user data
+
+**Callback Signal:** `presence_interface_query_presence_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `target_user_id` - Epic Account ID
+
+### presence_interface_has_presence
+
+```gdscript
+IEOS.presence_interface_has_presence(options: RefCounted) -> bool
+```
+
+Checks if presence data is cached for a user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+
+**Returns:** Boolean indicating if presence data exists
+
+### presence_interface_copy_presence
+
+```gdscript
+IEOS.presence_interface_copy_presence(options: RefCounted) -> Dictionary
+```
+
+Copies cached presence information.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+
+**Returns:** Dictionary with `result_code` and `presence_info`
+
+### presence_interface_create_presence_modification
+
+```gdscript
+IEOS.presence_interface_create_presence_modification(options: RefCounted) -> Dictionary
+```
+
+Creates a presence modification handle.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+
+**Returns:** Dictionary with `result_code` and `presence_modification` (EOSGPresenceModification)
+
+### presence_interface_set_presence
+
+```gdscript
+IEOS.presence_interface_set_presence(options: RefCounted) -> void
+```
+
+Sets/updates user presence.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `presence_modification` - EOSGPresenceModification object
+  - `client_data` - Optional user data
+
+**Callback Signal:** `presence_interface_set_presence_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `rich_presence_result_code` - Result for rich presence update
+
+### presence_interface_get_join_info
+
+```gdscript
+IEOS.presence_interface_get_join_info(options: RefCounted) -> Dictionary
+```
+
+Gets join information from a user's presence.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+
+**Returns:** Dictionary with `result_code` and `join_info` string
+
+## Example Usage
+
+```gdscript
+# Set presence
+var mod_result = IEOS.presence_interface_create_presence_modification({
+    "local_user_id": epic_account_id
+})
+
+if mod_result.result_code == EOS_EResult.EOS_Success:
+    var presence_mod = mod_result.presence_modification
+    
+    # Configure presence on presence_mod object
+    # (using PresenceModification methods)
+    presence_mod.set_status("Playing")
+    presence_mod.set_rich_text("In a match")
+    presence_mod.set_join_info("lobby_" + lobby_id)
+    
+    var set_options = {
+        "local_user_id": epic_account_id,
+        "presence_modification": presence_mod
+    }
+    
+    IEOS.presence_interface_set_presence_callback.connect(_on_presence_set)
+    IEOS.presence_interface_set_presence(set_options)
+
+func _on_presence_set(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Presence updated")
+
+# Query friend presence
+var query_options = {
+    "local_user_id": epic_account_id,
+    "target_user_id": friend_epic_id
+}
+
+IEOS.presence_interface_query_presence_callback.connect(_on_presence_queried)
+IEOS.presence_interface_query_presence(query_options)
+
+func _on_presence_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var presence = IEOS.presence_interface_copy_presence({
+            "local_user_id": epic_account_id,
+            "target_user_id": friend_epic_id
+        })
+        print("Friend presence: ", presence.presence_info)
+```
+
+## See Also
+
+- [Friends Interface](/reference/friends-interface) - Friends list management
+- [UserInfo Interface](/reference/userinfo-interface) - User display names

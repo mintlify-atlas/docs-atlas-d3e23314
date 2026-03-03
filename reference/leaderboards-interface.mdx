@@ -1,0 +1,207 @@
+---
+title: Leaderboards Interface
+description: API reference for the EOS Leaderboards Interface in Godot
+---
+
+The Leaderboards Interface manages competitive rankings based on player statistics.
+
+## Overview
+
+The Leaderboards Interface allows you to:
+
+- Query leaderboard definitions
+- Retrieve leaderboard rankings
+- Query user scores
+- Display competitive data
+
+Leaderboards are based on stats configured in the Developer Portal.
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### leaderboards_interface_query_leaderboard_definitions
+
+```gdscript
+IEOS.leaderboards_interface_query_leaderboard_definitions(options: RefCounted) -> void
+```
+
+Queries available leaderboard definitions.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `start_time` - Optional start time filter
+  - `end_time` - Optional end time filter
+  - `client_data` - Optional user data
+
+**Callback Signal:** `leaderboards_interface_query_leaderboard_definitions_callback`
+
+### leaderboards_interface_query_leaderboard_ranks
+
+```gdscript
+IEOS.leaderboards_interface_query_leaderboard_ranks(options: RefCounted) -> void
+```
+
+Queries leaderboard rankings.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `leaderboard_id` - Leaderboard ID string
+  - `client_data` - Optional user data
+
+**Callback Signal:** `leaderboards_interface_query_leaderboard_ranks_callback`
+
+### leaderboards_interface_query_leaderboard_user_scores
+
+```gdscript
+IEOS.leaderboards_interface_query_leaderboard_user_scores(options: RefCounted) -> void
+```
+
+Queries scores for specific users.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `user_ids` - Array of Product User IDs
+  - `stat_info` - Array of stat info Dictionaries:
+    - `stat_name` - Stat name string
+    - `aggregation` - EOS_ELeaderboardAggregation
+  - `start_time` - Optional start time
+  - `end_time` - Optional end time
+  - `client_data` - Optional user data
+
+**Callback Signal:** `leaderboards_interface_query_leaderboard_user_scores_callback`
+
+### leaderboards_interface_get_leaderboard_definition_count
+
+```gdscript
+IEOS.leaderboards_interface_get_leaderboard_definition_count(options: RefCounted) -> int
+```
+
+Returns the number of cached leaderboard definitions.
+
+**Returns:** Number of leaderboard definitions
+
+### leaderboards_interface_copy_leaderboard_definition_by_index
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_definition_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies a leaderboard definition by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `leaderboard_index` - Leaderboard index
+
+**Returns:** Dictionary with `result_code` and `definition`
+
+### leaderboards_interface_copy_leaderboard_definition_by_leaderboard_id
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_definition_by_leaderboard_id(options: RefCounted) -> Dictionary
+```
+
+Copies a leaderboard definition by ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `leaderboard_id` - Leaderboard ID string
+
+**Returns:** Dictionary with `result_code` and `definition`
+
+### leaderboards_interface_get_leaderboard_record_count
+
+```gdscript
+IEOS.leaderboards_interface_get_leaderboard_record_count(options: RefCounted) -> int
+```
+
+Returns the number of cached leaderboard records.
+
+**Returns:** Number of leaderboard records
+
+### leaderboards_interface_copy_leaderboard_record_by_index
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_record_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies a leaderboard record by index.
+
+**Returns:** Dictionary with `result_code` and `record`
+
+### leaderboards_interface_copy_leaderboard_record_by_user_id
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_record_by_user_id(options: RefCounted) -> Dictionary
+```
+
+Copies a leaderboard record for a specific user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `user_id` - Product User ID
+
+**Returns:** Dictionary with `result_code` and `record`
+
+### leaderboards_interface_get_leaderboard_user_score_count
+
+```gdscript
+IEOS.leaderboards_interface_get_leaderboard_user_score_count(options: RefCounted) -> int
+```
+
+Returns the number of cached user scores.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `stat_name` - Stat name string
+
+**Returns:** Number of user scores
+
+### leaderboards_interface_copy_leaderboard_user_score_by_index
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_user_score_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies a user score by index.
+
+**Returns:** Dictionary with `result_code` and `user_score`
+
+### leaderboards_interface_copy_leaderboard_user_score_by_user_id
+
+```gdscript
+IEOS.leaderboards_interface_copy_leaderboard_user_score_by_user_id(options: RefCounted) -> Dictionary
+```
+
+Copies a user score by user ID.
+
+**Returns:** Dictionary with `result_code` and `user_score`
+
+## Example Usage
+
+```gdscript
+# Query leaderboard ranks
+var query_options = {
+    "local_user_id": product_user_id,
+    "leaderboard_id": "HighScores"
+}
+
+IEOS.leaderboards_interface_query_leaderboard_ranks_callback.connect(_on_ranks_queried)
+IEOS.leaderboards_interface_query_leaderboard_ranks(query_options)
+
+func _on_ranks_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var count = IEOS.leaderboards_interface_get_leaderboard_record_count({})
+        for i in range(min(count, 10)):  # Top 10
+            var record = IEOS.leaderboards_interface_copy_leaderboard_record_by_index({
+                "leaderboard_record_index": i
+            })
+            print("Rank ", i + 1, ": ", record.record)
+```
+
+## See Also
+
+- [Stats Interface](/reference/stats-interface) - Update player statistics

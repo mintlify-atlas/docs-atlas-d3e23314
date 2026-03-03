@@ -1,0 +1,322 @@
+---
+title: Ecom Interface
+description: API reference for the EOS Ecom (E-commerce) Interface in Godot
+---
+
+The Ecom Interface manages in-game purchases, entitlements, and the Epic Games Store catalog.
+
+## Overview
+
+The Ecom Interface provides:
+
+- Querying store offers and catalog items
+- Managing player entitlements
+- Checkout flow for purchases
+- Transaction history
+- Ownership verification
+
+All methods are called on the `IEOS` singleton instance and use Epic Account IDs.
+
+## Methods
+
+### ecom_interface_query_offers
+
+```gdscript
+IEOS.ecom_interface_query_offers(options: RefCounted) -> void
+```
+
+Queries available offers from the store catalog.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `override_catalog_namespace` - Optional catalog namespace
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ecom_interface_query_offers_callback`
+
+### ecom_interface_query_entitlements
+
+```gdscript
+IEOS.ecom_interface_query_entitlements(options: RefCounted) -> void
+```
+
+Queries player entitlements.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `entitlement_names` - Array of entitlement name strings (optional)
+  - `include_redeemed` - Boolean to include redeemed entitlements
+  - `override_catalog_namespace` - Optional catalog namespace
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ecom_interface_query_entitlements_callback`
+
+### ecom_interface_query_ownership
+
+```gdscript
+IEOS.ecom_interface_query_ownership(options: RefCounted) -> void
+```
+
+Queries ownership status of catalog items.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `catalog_item_ids` - Array of item ID strings
+  - `catalog_namespace` - Optional catalog namespace
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ecom_interface_query_ownership_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `item_ownership` - Array of ownership info Dictionaries
+
+### ecom_interface_checkout
+
+```gdscript
+IEOS.ecom_interface_checkout(options: RefCounted) -> void
+```
+
+Initiates checkout for purchasing items.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `entries` - Array of checkout entry Dictionaries:
+    - `offer_id` - Offer ID to purchase
+  - `override_catalog_namespace` - Optional catalog namespace
+  - `preferred_orientation` - EOS_ECheckoutOrientation
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ecom_interface_checkout_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `transaction_id` - Transaction ID if successful
+
+### ecom_interface_redeem_entitlements
+
+```gdscript
+IEOS.ecom_interface_redeem_entitlements(options: RefCounted) -> void
+```
+
+Redeems consumable entitlements.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `entitlement_ids` - Array of entitlement ID strings
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ecom_interface_redeem_entitlements_callback`
+
+### ecom_interface_get_offer_count
+
+```gdscript
+IEOS.ecom_interface_get_offer_count(options: RefCounted) -> int
+```
+
+Gets the cached offer count.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+
+**Returns:** Number of offers
+
+### ecom_interface_copy_offer_by_index
+
+```gdscript
+IEOS.ecom_interface_copy_offer_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies offer information by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `offer_index` - Offer index
+
+**Returns:** Dictionary with `result_code` and `offer`
+
+### ecom_interface_copy_offer_by_id
+
+```gdscript
+IEOS.ecom_interface_copy_offer_by_id(options: RefCounted) -> Dictionary
+```
+
+Copies offer information by offer ID.
+
+**Returns:** Dictionary with `result_code` and `offer`
+
+### ecom_interface_get_entitlements_count
+
+```gdscript
+IEOS.ecom_interface_get_entitlements_count(options: RefCounted) -> int
+```
+
+Gets the cached entitlement count.
+
+**Returns:** Number of entitlements
+
+### ecom_interface_copy_entitlement_by_index
+
+```gdscript
+IEOS.ecom_interface_copy_entitlement_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies entitlement by index.
+
+**Returns:** Dictionary with `result_code` and `entitlement`
+
+### ecom_interface_copy_entitlement_by_id
+
+```gdscript
+IEOS.ecom_interface_copy_entitlement_by_id(options: RefCounted) -> Dictionary
+```
+
+Copies entitlement by ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `entitlement_id` - Entitlement ID string
+
+**Returns:** Dictionary with `result_code` and `entitlement`
+
+### ecom_interface_copy_entitlement_by_name_and_index
+
+```gdscript
+IEOS.ecom_interface_copy_entitlement_by_name_and_index(options: RefCounted) -> Dictionary
+```
+
+Copies entitlement by name and index.
+
+**Returns:** Dictionary with `result_code` and `entitlement`
+
+### ecom_interface_get_transaction_count
+
+```gdscript
+IEOS.ecom_interface_get_transaction_count(options: RefCounted) -> int
+```
+
+Gets the transaction count.
+
+**Returns:** Number of transactions
+
+### ecom_interface_copy_transaction_by_index
+
+```gdscript
+IEOS.ecom_interface_copy_transaction_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies transaction by index.
+
+**Returns:** Dictionary with `result_code` and `transaction`
+
+### ecom_interface_copy_transaction_by_id
+
+```gdscript
+IEOS.ecom_interface_copy_transaction_by_id(options: RefCounted) -> Dictionary
+```
+
+Copies transaction by ID.
+
+**Returns:** Dictionary with `result_code` and `transaction`
+
+### ecom_interface_copy_item_by_id
+
+```gdscript
+IEOS.ecom_interface_copy_item_by_id(options: RefCounted) -> Dictionary
+```
+
+Copies catalog item information.
+
+**Returns:** Dictionary with `result_code` and `item`
+
+### ecom_interface_get_offer_item_count
+
+```gdscript
+IEOS.ecom_interface_get_offer_item_count(options: RefCounted) -> int
+```
+
+Gets the number of items in an offer.
+
+**Returns:** Number of items
+
+### ecom_interface_copy_offer_item_by_index
+
+```gdscript
+IEOS.ecom_interface_copy_offer_item_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies offer item by index.
+
+**Returns:** Dictionary with `result_code` and `item`
+
+### ecom_interface_get_offer_image_info_count
+
+```gdscript
+IEOS.ecom_interface_get_offer_image_info_count(options: RefCounted) -> int
+```
+
+Gets the number of images for an offer.
+
+**Returns:** Number of images
+
+### ecom_interface_copy_offer_image_info_by_index
+
+```gdscript
+IEOS.ecom_interface_copy_offer_image_info_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies offer image info by index.
+
+**Returns:** Dictionary with `result_code` and `image_info`
+
+## Example Usage
+
+```gdscript
+# Query available offers
+var query_options = {
+    "local_user_id": epic_account_id
+}
+
+IEOS.ecom_interface_query_offers_callback.connect(_on_offers_queried)
+IEOS.ecom_interface_query_offers(query_options)
+
+func _on_offers_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var count = IEOS.ecom_interface_get_offer_count({"local_user_id": epic_account_id})
+        for i in range(count):
+            var offer = IEOS.ecom_interface_copy_offer_by_index({
+                "local_user_id": epic_account_id,
+                "offer_index": i
+            })
+            print("Offer: ", offer.offer)
+
+# Purchase an item
+var checkout_options = {
+    "local_user_id": epic_account_id,
+    "entries": [{"offer_id": "premium_currency_100"}],
+    "preferred_orientation": 0
+}
+
+IEOS.ecom_interface_checkout_callback.connect(_on_checkout_complete)
+IEOS.ecom_interface_checkout(checkout_options)
+
+func _on_checkout_complete(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Purchase successful: ", data.transaction_id)
+        # Query entitlements to get the purchased items
+        IEOS.ecom_interface_query_entitlements({"local_user_id": epic_account_id})
+```
+
+## See Also
+
+- Epic Games Developer Portal - Configure catalog and offers

@@ -1,0 +1,292 @@
+---
+title: 'HSessions'
+description: 'Session management for Epic Online Services'
+---
+
+## Overview
+
+The `HSessions` class provides methods for creating, updating, joining, and searching for game sessions. Sessions are similar to lobbies but offer different features and use cases.
+
+## Properties
+
+### max_search_results
+
+```gdscript
+var max_search_results: int = 25
+```
+
+The maximum number of sessions to return in search calls.
+
+## Methods
+
+### create_session
+
+```gdscript
+func create_session(opts: EOS.Sessions.CreateSessionModificationOptions) -> EOSGSessionModification
+```
+
+Create a session modification object for creating or updating a session.
+
+<ParamField path="opts" type="EOS.Sessions.CreateSessionModificationOptions" required>
+  Options for creating the session modification
+</ParamField>
+
+<ResponseField name="return" type="EOSGSessionModification">
+  Returns `EOSGSessionModification` instance or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Sessions.CreateSessionModificationOptions.new()
+opts.session_name = "my_session"
+opts.bucket_id = "game_mode:deathmatch"
+opts.max_players = 8
+
+var session_mod = HSessions.create_session(opts)
+if session_mod:
+    print("Session modification created")
+```
+
+### update_session_async
+
+```gdscript
+func update_session_async(p_session: EOSGSessionModification) -> bool
+```
+
+Update a session with the provided modification.
+
+<ParamField path="p_session" type="EOSGSessionModification" required>
+  The session modification to apply
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if the session was updated successfully, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Sessions.CreateSessionModificationOptions.new()
+opts.session_name = "my_session"
+opts.max_players = 8
+
+var session_mod = HSessions.create_session(opts)
+if session_mod:
+    var success = await HSessions.update_session_async(session_mod)
+    if success:
+        print("Session updated")
+```
+
+### get_active_session
+
+```gdscript
+func get_active_session(p_session_name: String) -> EOSGActiveSession
+```
+
+Get details about an active session.
+
+<ParamField path="p_session_name" type="String" required>
+  The name of the session to query
+</ParamField>
+
+<ResponseField name="return" type="EOSGActiveSession">
+  Returns `EOSGActiveSession` instance or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var active_session = HSessions.get_active_session("my_session")
+if active_session:
+    var info = active_session.copy_info()
+    print("Session ID: ", info.session_id)
+```
+
+### join_async
+
+```gdscript
+func join_async(session: EOSGSessionDetails, session_name: String, presence_enabled: bool = false) -> bool
+```
+
+Join an existing session.
+
+<ParamField path="session" type="EOSGSessionDetails" required>
+  The session details to join (typically from a search result)
+</ParamField>
+
+<ParamField path="session_name" type="String" required>
+  Local name for this session
+</ParamField>
+
+<ParamField path="presence_enabled" type="bool" default="false">
+  Whether to show the session in the user's presence
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if the session was joined successfully, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var sessions = await HSessions.search_by_attribute_async({key = "mode", value = "ranked"})
+if sessions and not sessions.is_empty():
+    var success = await HSessions.join_async(sessions[0], "current_game", true)
+    if success:
+        print("Joined session")
+```
+
+### search_by_attribute_async
+
+```gdscript
+func search_by_attribute_async(attributes) -> Array
+```
+
+Search for sessions based on attributes. The input argument can either be a Dictionary or an Array of Dictionary.
+
+<ParamField path="attributes" type="Dictionary or Array" required>
+  Search attributes. Each attribute is a Dictionary with keys:
+  - `key`: String - the key of the attribute
+  - `value`: String - the value of the attribute
+  - `comparison`: EOS.ComparisonOp - Type of comparison to make (default is EOS.ComparisonOp.Equal)
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `EOSGSessionDetails` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+# Single attribute search
+var sessions = await HSessions.search_by_attribute_async({
+    key = "game_mode",
+    value = "capture_flag"
+})
+
+# Multiple attribute search
+var sessions = await HSessions.search_by_attribute_async([
+    {key = "game_mode", value = "capture_flag"},
+    {key = "difficulty", value = "normal"}
+])
+
+if sessions:
+    print("Found ", sessions.size(), " sessions")
+```
+
+### create_search
+
+```gdscript
+func create_search(opts: EOS.Sessions.CreateSessionSearchOptions) -> EOSGSessionSearch
+```
+
+(Advanced) Create a new session search.
+
+<ParamField path="opts" type="EOS.Sessions.CreateSessionSearchOptions" required>
+  Options for creating the session search
+</ParamField>
+
+<ResponseField name="return" type="EOSGSessionSearch">
+  Returns `EOSGSessionSearch` instance or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Sessions.CreateSessionSearchOptions.new()
+opts.max_search_results = 50
+
+var search = HSessions.create_search(opts)
+if search:
+    search.set_parameter("mode", "ranked", EOS.ComparisonOp.Equal)
+    var sessions = await HSessions.search_async(search)
+```
+
+### search_async
+
+```gdscript
+func search_async(session_search: EOSGSessionSearch) -> Array
+```
+
+(Advanced) Perform the session search.
+
+<ParamField path="session_search" type="EOSGSessionSearch" required>
+  The session search instance created with `create_search`
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `EOSGSessionDetails` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Sessions.CreateSessionSearchOptions.new()
+opts.max_search_results = 10
+
+var search = HSessions.create_search(opts)
+if search:
+    search.set_parameter("region", "eu", EOS.ComparisonOp.Equal)
+    search.set_parameter("skill", "1500", EOS.ComparisonOp.GreaterThanOrEqual)
+    
+    var sessions = await HSessions.search_async(search)
+    if sessions:
+        for session in sessions:
+            var info = session.copy_info()
+            print("Session: ", info.session_id)
+```
+
+**Complete Usage Example:**
+
+```gdscript
+# Create and configure a session
+func create_game_session():
+    var opts = EOS.Sessions.CreateSessionModificationOptions.new()
+    opts.session_name = "my_game"
+    opts.bucket_id = "region:us-west:mode:deathmatch"
+    opts.max_players = 16
+    
+    var session_mod = HSessions.create_session(opts)
+    if not session_mod:
+        print("Failed to create session modification")
+        return
+    
+    # Set session attributes
+    session_mod.set_permission_level(EOS.Sessions.OnlineSessionPermissionLevel.Publicadvertised)
+    session_mod.add_attribute({key = "game_mode", value = "team_deathmatch"})
+    session_mod.add_attribute({key = "map", value = "arctic_base"})
+    
+    # Update the session
+    var success = await HSessions.update_session_async(session_mod)
+    if success:
+        print("Session created and configured")
+        return true
+    return false
+
+# Search for and join a session
+func find_and_join_session():
+    var sessions = await HSessions.search_by_attribute_async([
+        {key = "game_mode", value = "team_deathmatch"},
+        {key = "map", value = "arctic_base"}
+    ])
+    
+    if not sessions or sessions.is_empty():
+        print("No sessions found")
+        return false
+    
+    # Join the first available session
+    var session = sessions[0]
+    var info = session.copy_info()
+    print("Joining session: ", info.session_id)
+    
+    var success = await HSessions.join_async(session, "current_game", true)
+    if success:
+        print("Successfully joined session")
+        return true
+    return false
+```
+
+<Note>
+  Sessions are different from lobbies. Sessions are better suited for competitive matchmaking and ranked games, while lobbies are better for casual play and friend invites.
+</Note>

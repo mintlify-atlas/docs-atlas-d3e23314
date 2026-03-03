@@ -1,0 +1,193 @@
+---
+title: Bootstrapping EOS
+description: Bootstrap your Godot executable for Account Portal login support
+---
+
+To use the **Account Portal** login option with Epic Online Services, you need to bootstrap your Godot executable. This is required by EOS SDK 1.15 and later.
+
+## What is Bootstrapping?
+
+Bootstrapping registers your application with the Epic Online Services launcher infrastructure, enabling:
+- Account Portal authentication flow
+- Seamless Epic Games account login
+- Cross-platform account services
+
+Without bootstrapping, you can still use other authentication methods like:
+- DevAuth tool (development only)
+- Anonymous login
+- External authentication (Steam, Discord, etc.)
+
+## When to Bootstrap
+
+You need to bootstrap in two scenarios:
+
+1. **During development** - Bootstrap the Godot Editor executable to test Account Portal login
+2. **After exporting** - Bootstrap your exported game executable for production use
+
+<Warning>
+Bootstrapping is currently only supported on Windows. Account Portal login is not available on other platforms through this method.
+</Warning>
+
+## Bootstrapping the Godot Editor
+
+For testing Account Portal login during development:
+
+<Steps>
+  <Step title="Locate the Godot executable">
+    Find your Godot Editor executable, for example:
+    ```
+    Godot_v4.2.0-stable_win64.exe
+    ```
+  </Step>
+
+  <Step title="Create a .ini configuration file">
+    Create a file named `Godot_v4.2.0-stable_win64.ini` (matching your executable name) with:
+    
+    ```ini
+    ApplicationPath=Godot_v4.2.0-stable_win64.exe
+    WorkingDirectory=
+    WaitForExit=0
+    NoOperation=0
+    ```
+    
+    - `ApplicationPath` - Name of your Godot executable
+    - `WorkingDirectory` - Leave empty to use current directory
+    - `WaitForExit` - Set to 0 (don't wait)
+    - `NoOperation` - Set to 0 (perform normal operation)
+  </Step>
+
+  <Step title="Run the bootstrapper tool">
+    Follow Epic's guide: [Running the service for local development](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html#runningtheserviceforlocaldevelopment)
+    
+    This registers the Godot Editor with the EOS service.
+  </Step>
+
+  <Step title="Test Account Portal login">
+    Launch Godot and test the Account Portal login in your game:
+    
+    ```gdscript
+    # Use Account Portal login
+    await HAuth.login_account_portal_async()
+    ```
+  </Step>
+</Steps>
+
+## Bootstrapping Your Exported Game
+
+For production builds:
+
+<Steps>
+  <Step title="Export your game">
+    Export your Godot project normally. For example:
+    ```
+    MyAmazingGame.exe
+    ```
+  </Step>
+
+  <Step title="Create game .ini file">
+    Create `MyAmazingGame.ini` with:
+    
+    ```ini
+    ApplicationPath=MyAmazingGame.exe
+    WorkingDirectory=
+    WaitForExit=0
+    NoOperation=0
+    ```
+  </Step>
+
+  <Step title="Bootstrap the game executable">
+    Use the EOS bootstrapper tool to register your game executable.
+    
+    See the complete guide: [Redistributable Installer](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html)
+  </Step>
+
+  <Step title="Distribute with your game">
+    When distributing your game:
+    - Include the bootstrapped executable
+    - Include the `.ini` file
+    - Include all EOS SDK DLLs
+  </Step>
+</Steps>
+
+## Configuration Reference
+
+### INI File Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|----------|
+| `ApplicationPath` | Path to your executable (relative or absolute) | `MyGame.exe` |
+| `WorkingDirectory` | Working directory for the app (empty = current dir) | `` |
+| `WaitForExit` | Whether to wait for app to close (0 = no, 1 = yes) | `0` |
+| `NoOperation` | Skip actual execution (0 = run normally, 1 = skip) | `0` |
+
+## Using Account Portal Login
+
+Once bootstrapped, you can use Account Portal login in your code:
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Setup EOS first
+    var credentials = HCredentials.new()
+    # ... configure credentials
+    await HPlatform.setup_eos_async(credentials)
+    
+    # Login with Account Portal
+    HAuth.logged_in.connect(_on_logged_in)
+    await HAuth.login_account_portal_async()
+
+func _on_logged_in():
+    print("Logged in: ", HAuth.display_name)
+```
+
+## Alternative Login Methods
+
+If you don't want to use Account Portal, consider these alternatives:
+
+### DevAuth Tool (Development Only)
+
+```gdscript
+# Login with DevAuth tool for development
+await HAuth.login_devtool_async("localhost:4545", "Player1")
+```
+
+### Anonymous Login
+
+```gdscript
+# Login without any credentials (limited features)
+await HAuth.login_anonymous_async()
+```
+
+### External Authentication
+
+Authenticate using external providers like Steam or Discord:
+
+```gdscript
+# Login with Steam (requires Steam integration)
+await HAuth.login_with_steam_async(steam_token)
+```
+
+## Troubleshooting
+
+### Account Portal Not Opening
+
+- Verify the executable is properly bootstrapped
+- Check that the `.ini` file is in the same directory as the executable
+- Ensure `ApplicationPath` in the `.ini` matches the executable name exactly
+
+### "Application Not Registered" Error
+
+- Re-run the bootstrapper tool
+- Verify your EOS application is properly configured in the Developer Portal
+- Check that your `CLIENT_ID` matches the bootstrapped application
+
+### Works in Editor but Not in Export
+
+- Remember to bootstrap the **exported executable**, not just the Godot Editor
+- Create a new `.ini` file for the exported game with the correct executable name
+
+## Additional Resources
+
+- [EOS Redistributable Installer Documentation](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html)
+- [Epic Account Services Overview](https://dev.epicgames.com/docs/epic-account-services)

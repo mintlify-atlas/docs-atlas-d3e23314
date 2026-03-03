@@ -1,0 +1,404 @@
+---
+title: Authentication
+description: Understanding Epic Account Services vs Epic Game Services and implementing player authentication
+---
+
+Epic Online Services provides two authentication systems that serve different purposes. Understanding the difference between Epic Account Services (EAS) and Epic Game Services (EGS) is crucial for implementing authentication correctly.
+
+## Epic Account Services vs Epic Game Services
+
+### Epic Account Services (EAS)
+
+Epic Account Services authenticates players using Epic Games accounts or third-party identity providers (Steam, PlayStation, Xbox, etc.). When you log in with EAS, you get an **Epic Account ID**.
+
+**Features available with EAS:**
+- Friends list and presence
+- Social overlay (Windows)
+- Epic Games Store integration
+- Cross-platform friends
+- User profile information
+
+**Use EAS when:**
+- You want social features (friends, presence)
+- You need Epic Games Store integration
+- You want the Epic social overlay
+- You're implementing cross-platform social features
+
+### Epic Game Services (EGS)
+
+Epic Game Services provides game-specific backend services without requiring an Epic Games account. When you connect to EGS, you get a **Product User ID**.
+
+**Features available with EGS:**
+- Achievements
+- Leaderboards
+- Player statistics
+- Lobbies and sessions
+- Voice chat
+- Peer-to-peer networking
+- Player data storage
+- Anti-cheat
+
+**Use EGS when:**
+- You need backend game services
+- You want platform-agnostic authentication
+- You don't need social features
+- You want the simplest authentication flow
+
+### Using Both Systems
+
+Most games use both systems to get the full feature set. The typical flow is:
+
+1. Log in to Epic Account Services (get Epic Account ID)
+2. Automatically connect to Epic Game Services (get Product User ID)
+3. Access both social features and game services
+
+The High Level API handles this automatically with `auto_connect_account = true` (default).
+
+## High Level Authentication
+
+The `HAuth` autoload class provides simple authentication methods and handles both EAS and EGS automatically.
+
+### Properties
+
+```gdscript
+# The Epic Account ID (from Epic Account Services)
+HAuth.epic_account_id: String
+
+# The Product User ID (from Epic Game Services)
+HAuth.product_user_id: String
+
+# Display name of the logged-in user
+HAuth.display_name: String
+
+# Automatically connect to EGS after EAS login (default: true)
+HAuth.auto_connect_account: bool
+
+# Automatically link account if not found (default: true)
+HAuth.auto_link_account: bool
+
+# Automatically fetch external account info (default: true)
+HAuth.auto_fetch_external_account: bool
+```
+
+### Signals
+
+```gdscript
+# Emitted when logged in (to EGS, or EAS if auto_connect is false)
+HAuth.logged_in
+
+# Emitted when logged out
+HAuth.logged_out
+
+# Emitted on login error
+HAuth.login_error(result_code: EOS.Result)
+
+# Epic Account Services specific
+HAuth.logged_in_auth
+HAuth.logged_out_auth
+HAuth.login_auth_error(result_code: EOS.Result)
+
+# Epic Game Services specific
+HAuth.logged_in_connect
+HAuth.logged_out_connect
+HAuth.login_connect_error(result_code: EOS.Result)
+
+# Display name changed
+HAuth.display_name_changed
+```
+
+### Development Login (Dev Auth Tool)
+
+During development, use the Epic Dev Auth Tool for quick testing:
+
+```gdscript
+func _ready() -> void:
+    # Setup EOS first
+    await HPlatform.setup_eos_async(credentials)
+    
+    # Connect to login signal
+    HAuth.logged_in.connect(_on_logged_in)
+    
+    # Login with Dev Auth Tool
+    var success := await HAuth.login_devtool_async("localhost:4545", "MyCredentialName")
+    if not success:
+        printerr("Login failed")
+
+func _on_logged_in():
+    print("Logged in successfully!")
+    print("Epic Account ID: ", HAuth.epic_account_id)
+    print("Product User ID: ", HAuth.product_user_id)
+    print("Display Name: ", HAuth.display_name)
+```
+
+### Account Portal Login
+
+For production, use Account Portal to let players log in with their Epic Games account:
+
+```gdscript
+func login_with_epic() -> void:
+    var success := await HAuth.login_account_portal_async()
+    if success:
+        print("Logged in: ", HAuth.display_name)
+```
+
+<Warning>
+Account Portal login on Windows requires bootstrapping your executable with EOS. See the [initialization guide](/docs/concepts/initialization#platform-specific-initialization).
+</Warning>
+
+### Persistent Auth
+
+Save the login session so players don't need to log in every time:
+
+```gdscript
+func try_auto_login() -> void:
+    var success := await HAuth.login_persistent_auth_async()
+    if success:
+        print("Auto-login successful")
+    else:
+        # Show login UI
+        show_login_screen()
+
+func delete_saved_session() -> void:
+    await HAuth.delete_persistent_auth_async()
+```
+
+### Epic Games Launcher Login
+
+When launching from the Epic Games Launcher, use exchange code authentication:
+
+```gdscript
+func _ready() -> void:
+    await HPlatform.setup_eos_async(credentials)
+    
+    # Pass -AUTH_PASSWORD=<exchange_code> as command line argument
+    var success := await HAuth.login_launcher_async()
+    if success:
+        print("Logged in from launcher")
+```
+
+During development, test this by passing the exchange code as a CLI argument:
+```bash
+godot . -AUTH_PASSWORD=1234567890abcdef
+```
+
+### Anonymous Login (Epic Game Services Only)
+
+For games that don't need social features, use anonymous login:
+
+```gdscript
+func login_anonymously() -> void:
+    var display_name = "Player" + str(randi() % 10000)
+    var success := await HAuth.login_anonymous_async(display_name)
+    if success:
+        print("Logged in anonymously")
+        print("Product User ID: ", HAuth.product_user_id)
+        print("Display Name: ", HAuth.display_name)
+```
+
+<Info>
+Anonymous login creates a device-specific ID. Players will have different accounts on different devices.
+</Info>
+
+### Custom Login (GDExtension)
+
+For other identity providers (Steam, PlayStation, Xbox), use the GDExtension API:
+
+```gdscript
+func login_with_steam(steam_token: String) -> void:
+    var login_opts = EOS.Connect.LoginOptions.new()
+    login_opts.credentials = EOS.Connect.Credentials.new()
+    login_opts.credentials.type = EOS.ExternalCredentialType.SteamSessionTicket
+    login_opts.credentials.token = steam_token
+    
+    var success := await HAuth.login_game_services_async(login_opts)
+    if success:
+        print("Logged in with Steam")
+```
+
+### Logout
+
+```gdscript
+func logout() -> void:
+    var result := await HAuth.logout_async()
+    if EOS.is_success(result):
+        print("Logged out successfully")
+```
+
+## User Information
+
+### Get User Info (Epic Account Services)
+
+```gdscript
+func get_current_user_info() -> void:
+    var user_info := await HAuth.get_user_info_async(HAuth.epic_account_id)
+    if user_info:
+        print("Display Name: ", user_info.display_name)
+        print("Country: ", user_info.country)
+        print("Preferred Language: ", user_info.preferred_language)
+```
+
+### Get External Account Info (Epic Game Services)
+
+```gdscript
+func get_linked_steam_account() -> void:
+    var account_info := await HAuth.get_external_account_by_type_async(
+        EOS.ExternalAccountType.Steam,
+        HAuth.product_user_id
+    )
+    
+    if account_info:
+        print("Steam ID: ", account_info.account_id)
+        print("Display Name: ", account_info.display_name)
+```
+
+### Get All Linked Accounts
+
+```gdscript
+func show_all_linked_accounts() -> void:
+    var accounts := await HAuth.get_external_accounts_async(HAuth.product_user_id)
+    
+    for account in accounts:
+        print("Account Type: ", account.account_id_type)
+        print("Account ID: ", account.account_id)
+        print("Display Name: ", account.display_name)
+```
+
+## Advanced Configuration
+
+### Customizing Auth Behavior
+
+```gdscript
+func _ready() -> void:
+    # Don't automatically connect to Epic Game Services
+    HAuth.auto_connect_account = false
+    
+    # Don't automatically link new accounts
+    HAuth.auto_link_account = false
+    
+    # Don't fetch external account info
+    HAuth.auto_fetch_external_account = false
+    
+    # Customize scope flags for Epic Account Services
+    HAuth.auth_login_scope_flags = (
+        EOS.Auth.ScopeFlags.BasicProfile |
+        EOS.Auth.ScopeFlags.Presence |
+        EOS.Auth.ScopeFlags.FriendsList
+    )
+    
+    # Customize login flags
+    HAuth.auth_login_flags = EOS.Auth.LoginFlags.None
+```
+
+### Manual Epic Game Services Connection
+
+If you set `auto_connect_account = false`, manually connect after EAS login:
+
+```gdscript
+func _ready() -> void:
+    HAuth.auto_connect_account = false
+    HAuth.logged_in_auth.connect(_on_logged_in_auth)
+    
+    await HAuth.login_account_portal_async()
+
+func _on_logged_in_auth():
+    print("Logged into Epic Account Services")
+    print("Epic Account ID: ", HAuth.epic_account_id)
+    
+    # Now manually connect to Epic Game Services
+    var login_opts = EOS.Connect.LoginOptions.new()
+    login_opts.credentials = EOS.Connect.Credentials.new()
+    login_opts.credentials.type = EOS.ExternalCredentialType.Epic
+    
+    var auth_token_ret = EOS.Auth.AuthInterface.copy_user_auth_token(
+        EOS.Auth.CopyUserAuthTokenOptions.new(),
+        HAuth.epic_account_id
+    )
+    
+    if EOS.is_success(auth_token_ret):
+        login_opts.credentials.token = auth_token_ret.token.access_token
+        await HAuth.login_game_services_async(login_opts)
+```
+
+## Complete Example
+
+Here's a complete authentication flow:
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Setup EOS
+    var credentials = HCredentials.new()
+    credentials.product_name = "My Game"
+    credentials.product_version = "1.0"
+    # ... set other credentials ...
+    
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        return
+    
+    # Configure logging
+    HPlatform.log_msg.connect(_on_eos_log_msg)
+    HPlatform.set_eos_log_level(
+        EOS.Logging.LogCategory.AllCategories,
+        EOS.Logging.LogLevel.Info
+    )
+    
+    # Connect auth signals
+    HAuth.logged_in.connect(_on_logged_in)
+    HAuth.logged_out.connect(_on_logged_out)
+    HAuth.login_error.connect(_on_login_error)
+    HAuth.display_name_changed.connect(_on_display_name_changed)
+    
+    # Try persistent auth first
+    var auto_login := await HAuth.login_persistent_auth_async()
+    if not auto_login:
+        # Show login UI if auto-login fails
+        show_login_ui()
+
+func show_login_ui() -> void:
+    # During development
+    await HAuth.login_devtool_async("localhost:4545", "TestUser")
+    
+    # In production
+    # await HAuth.login_account_portal_async()
+
+func _on_logged_in():
+    print("Successfully logged in!")
+    print("Epic Account ID: ", HAuth.epic_account_id)
+    print("Product User ID: ", HAuth.product_user_id)
+    print("Display Name: ", HAuth.display_name)
+    
+    # Proceed to main menu
+    get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+func _on_logged_out():
+    print("Logged out")
+    get_tree().change_scene_to_file("res://scenes/login.tscn")
+
+func _on_login_error(result_code: EOS.Result):
+    printerr("Login error: ", EOS.result_str(result_code))
+    show_error_message("Failed to log in. Please try again.")
+
+func _on_display_name_changed():
+    print("Display name updated: ", HAuth.display_name)
+
+func _on_eos_log_msg(msg: EOS.Logging.LogMessage) -> void:
+    print("SDK %s | %s" % [msg.category, msg.message])
+```
+
+## Best Practices
+
+<Tip>
+- Use Dev Auth Tool during development for quick iteration
+- Implement persistent auth for better user experience
+- Always handle both success and error cases
+- Use the High Level API unless you need platform-specific auth (Steam, PlayStation, etc.)
+- Test authentication flows on all target platforms
+</Tip>
+
+<Warning>
+- MFA (Multi-Factor Authentication) is not supported by the EOS SDK. Use accounts without MFA or alternative login methods
+- Device ID authentication creates platform-specific accounts - users will have different IDs on different devices
+- Always check `EOS.is_success()` before accessing authentication data
+</Warning>

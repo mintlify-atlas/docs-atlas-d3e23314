@@ -1,0 +1,406 @@
+---
+title: Lobbies and sessions
+description: Create and manage multiplayer lobbies and sessions with Epic Online Services
+---
+
+Epic Online Services provides two systems for organizing multiplayer games: **Lobbies** (casual matchmaking) and **Sessions** (competitive play). EOSG provides the `HLobbies` and `HSessions` classes for easy integration.
+
+## Overview
+
+### Lobbies vs Sessions
+
+| Feature | Lobbies | Sessions |
+|---------|---------|----------|
+| **Use Case** | Casual matchmaking, friends playing together | Competitive matches, ranked play |
+| **Visibility** | Can be public or private | Usually private/invite-only |
+| **Matchmaking** | Simple search and join | Complex skill-based matching |
+| **Voice Chat** | Built-in RTC support | Separate RTC setup |
+| **Max Players** | Up to 64 players | Up to 64 players |
+
+<Tip>
+For most games, start with Lobbies. They're simpler and include built-in voice chat.
+</Tip>
+
+## Creating a Lobby
+
+### Basic Lobby Creation
+
+```gdscript
+func create_game_lobby():
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+    opts.presence_enabled = true
+    opts.allow_invites = true
+    opts.bucket_id = "region:us-west:mode:deathmatch"  # For matchmaking
+    
+    var lobby: HLobby = await HLobbies.create_lobby_async(opts)
+    if not lobby:
+        printerr("Failed to create lobby")
+        return
+    
+    print("Lobby created! ID: %s" % lobby.lobby_id)
+    print("Lobby owner: %s" % lobby.owner_id)
+```
+
+### Set Lobby Attributes
+
+Attributes help players find and filter lobbies:
+
+```gdscript
+func setup_lobby_attributes(lobby: HLobby):
+    # Set lobby attributes for searching
+    var attributes = [
+        {key = "MAP", value = "desert"},
+        {key = "MODE", value = "deathmatch"},
+        {key = "DIFFICULTY", value = "hard"},
+        {key = "MAX_PLAYERS", value = 4}
+    ]
+    
+    for attr in attributes:
+        var success = await lobby.set_attribute_async(attr.key, attr.value)
+        if not success:
+            printerr("Failed to set attribute: %s" % attr.key)
+```
+
+## Searching for Lobbies
+
+### Basic Search
+
+```gdscript
+func search_lobbies():
+    var opts = EOS.LobbySearch.FindOptions.new()
+    
+    # Create search and set filters
+    var search = await HLobbies.create_search()
+    
+    # Filter by map
+    search.set_parameter("MAP", "desert", EOS.ComparisonOp.Equal)
+    
+    # Filter by mode
+    search.set_parameter("MODE", "deathmatch", EOS.ComparisonOp.Equal)
+    
+    # Search
+    var lobbies: Array[HLobby] = await HLobbies.search_async(search)
+    
+    print("Found %d lobbies" % lobbies.size())
+    for lobby in lobbies:
+        print("Lobby: %s (%d/%d players)" % [
+            lobby.lobby_id,
+            lobby.get_member_count(),
+            lobby.get_max_members()
+        ])
+        
+    return lobbies
+```
+
+### Advanced Search with Multiple Filters
+
+```gdscript
+func search_available_lobbies():
+    var search = await HLobbies.create_search()
+    
+    # Only lobbies with open slots
+    search.set_parameter("HAS_OPEN_SLOTS", true, EOS.ComparisonOp.Equal)
+    
+    # Specific game mode
+    search.set_parameter("MODE", "teamdeathmatch", EOS.ComparisonOp.Equal)
+    
+    # Max latency filter (if bucket_id includes region)
+    search.set_max_results(20)
+    
+    var lobbies = await HLobbies.search_async(search)
+    return lobbies
+```
+
+## Joining a Lobby
+
+### Join from Search Results
+
+```gdscript
+func join_first_available_lobby():
+    var lobbies = await search_lobbies()
+    
+    if lobbies.is_empty():
+        print("No lobbies found")
+        return null
+    
+    # Join the first lobby
+    var lobby = await HLobbies.join_async(lobbies[0])
+    if not lobby:
+        printerr("Failed to join lobby")
+        return null
+    
+    print("Joined lobby: %s" % lobby.lobby_id)
+    
+    # Set up lobby event listeners
+    setup_lobby_events(lobby)
+    
+    return lobby
+```
+
+### Join by ID (Invites)
+
+```gdscript
+func join_friend_lobby(lobby_id: String):
+    var lobby = await HLobbies.join_by_id_async(lobby_id)
+    if not lobby:
+        printerr("Failed to join lobby")
+        return
+    
+    print("Joined friend's lobby!")
+```
+
+## Lobby Events and Members
+
+### Listen to Lobby Events
+
+```gdscript
+func setup_lobby_events(lobby: HLobby):
+    # Member joined
+    lobby.member_joined.connect(func(member_id):
+        print("%s joined the lobby" % member_id)
+        update_lobby_ui()
+    )
+    
+    # Member left
+    lobby.member_left.connect(func(member_id):
+        print("%s left the lobby" % member_id)
+        update_lobby_ui()
+    )
+    
+    # Lobby updated (attributes changed)
+    lobby.lobby_updated.connect(func():
+        print("Lobby settings updated")
+        update_lobby_ui()
+    )
+    
+    # Owner changed (host migration)
+    lobby.owner_changed.connect(func(new_owner_id):
+        print("New lobby owner: %s" % new_owner_id)
+        
+        if new_owner_id == HAuth.product_user_id:
+            print("You are now the host!")
+            enable_host_controls()
+    )
+```
+
+### Get Lobby Members
+
+```gdscript
+func display_lobby_members(lobby: HLobby):
+    var members = lobby.get_members()
+    
+    print("=== Lobby Members ===")
+    for member in members:
+        var is_owner = (member.product_user_id == lobby.owner_id)
+        var marker = "[HOST]" if is_owner else "      "
+        print("%s %s" % [marker, member.product_user_id])
+```
+
+## Voice Chat in Lobbies
+
+Lobbies have built-in voice chat support through RTC:
+
+```gdscript
+func enable_voice_chat(lobby: HLobby):
+    # Voice chat is automatically available in lobbies
+    # Configure RTC options when creating/joining
+    
+    HLobbies.local_rtc_options = {
+        flags = EOS.RTC.JoinRoomFlags.EnableDataChannel,
+        use_manual_audio_input = false,
+        use_manual_audio_output = false,
+        local_audio_device_input_starts_muted = false
+    }
+    
+    # Mute/unmute yourself
+    lobby.set_rtc_audio_muted(false)  # unmuted
+    
+    # Get speaking participants
+    var speaking = lobby.get_rtc_speaking_participants()
+    for participant_id in speaking:
+        print("%s is speaking" % participant_id)
+```
+
+## Leaving a Lobby
+
+```gdscript
+func leave_lobby(lobby: HLobby):
+    var success = await lobby.leave_async()
+    if success:
+        print("Left lobby successfully")
+    else:
+        printerr("Failed to leave lobby")
+```
+
+## Complete Lobby UI Example
+
+```gdscript
+extends Control
+
+var current_lobby: HLobby = null
+var found_lobbies: Array[HLobby] = []
+
+@onready var lobby_list = $LobbyBrowser/LobbyList
+@onready var member_list = $LobbyRoom/MemberList
+@onready var create_button = $CreateLobbyButton
+@onready var leave_button = $LeaveLobbyButton
+
+func _ready():
+    create_button.pressed.connect(create_lobby)
+    leave_button.pressed.connect(leave_current_lobby)
+    refresh_lobby_list()
+
+func create_lobby():
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+    opts.presence_enabled = true
+    opts.bucket_id = "quickmatch"
+    
+    current_lobby = await HLobbies.create_lobby_async(opts)
+    if not current_lobby:
+        show_error("Failed to create lobby")
+        return
+    
+    # Set lobby attributes
+    await current_lobby.set_attribute_async("MAP", "forest")
+    await current_lobby.set_attribute_async("MODE", "coop")
+    
+    setup_lobby_events(current_lobby)
+    switch_to_lobby_view()
+
+func refresh_lobby_list():
+    var search = await HLobbies.create_search()
+    search.set_max_results(20)
+    
+    found_lobbies = await HLobbies.search_async(search)
+    
+    # Clear list
+    for child in lobby_list.get_children():
+        child.queue_free()
+    
+    # Display lobbies
+    for lobby in found_lobbies:
+        create_lobby_entry(lobby)
+
+func create_lobby_entry(lobby: HLobby):
+    var entry = preload("res://lobby_entry.tscn").instantiate()
+    entry.set_lobby_id(lobby.lobby_id)
+    entry.set_player_count("%d/%d" % [lobby.get_member_count(), lobby.get_max_members()])
+    
+    var map = await lobby.get_attribute_async("MAP")
+    entry.set_map(map if map else "Unknown")
+    
+    entry.join_pressed.connect(func(): join_lobby(lobby))
+    lobby_list.add_child(entry)
+
+func join_lobby(lobby: HLobby):
+    current_lobby = await HLobbies.join_async(lobby)
+    if not current_lobby:
+        show_error("Failed to join lobby")
+        return
+    
+    setup_lobby_events(current_lobby)
+    switch_to_lobby_view()
+
+func setup_lobby_events(lobby: HLobby):
+    lobby.member_joined.connect(update_member_list)
+    lobby.member_left.connect(update_member_list)
+    lobby.owner_changed.connect(_on_owner_changed)
+
+func update_member_list(_member_id = null):
+    for child in member_list.get_children():
+        child.queue_free()
+    
+    var members = current_lobby.get_members()
+    for member in members:
+        var label = Label.new()
+        label.text = member.product_user_id
+        if member.product_user_id == current_lobby.owner_id:
+            label.text += " [HOST]"
+        member_list.add_child(label)
+
+func _on_owner_changed(new_owner_id):
+    print("New host: %s" % new_owner_id)
+    update_member_list()
+
+func leave_current_lobby():
+    if not current_lobby:
+        return
+    
+    await current_lobby.leave_async()
+    current_lobby = null
+    switch_to_browser_view()
+
+func switch_to_lobby_view():
+    $LobbyBrowser.hide()
+    $LobbyRoom.show()
+    update_member_list()
+
+func switch_to_browser_view():
+    $LobbyBrowser.show()
+    $LobbyRoom.hide()
+    refresh_lobby_list()
+
+func show_error(message: String):
+    $ErrorDialog.dialog_text = message
+    $ErrorDialog.popup_centered()
+```
+
+## Sessions (Competitive Play)
+
+Sessions are similar to lobbies but designed for competitive/ranked play:
+
+```gdscript
+# Create session
+func create_ranked_session():
+    var opts = EOS.Sessions.CreateSessionModificationOptions.new()
+    opts.session_name = "ranked_match_" + str(Time.get_unix_time_from_system())
+    opts.max_players = 10
+    opts.bucket_id = "ranked:skill_1000-1500"
+    
+    var session = await HSessions.create_session_async(opts)
+    if session:
+        print("Session created")
+
+# Search for sessions
+func search_ranked_sessions():
+    var search = await HSessions.create_search()
+    search.set_parameter("SKILL_BRACKET", "1000-1500", EOS.ComparisonOp.Equal)
+    
+    var sessions = await HSessions.search_async(search)
+    return sessions
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Bucket IDs" icon="filter">
+    Use bucket_id for regional matchmaking and game modes
+  </Card>
+  <Card title="Handle Host Migration" icon="arrows-rotate">
+    Listen to owner_changed signal for smooth host transfers
+  </Card>
+  <Card title="Validate Attributes" icon="shield-check">
+    Verify lobby attributes match before starting the game
+  </Card>
+  <Card title="Cleanup Lobbies" icon="trash">
+    Always call leave_async() when players exit
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="P2P Networking" icon="network-wired" href="/features/p2p-networking">
+    Set up P2P connections between lobby members
+  </Card>
+  <Card title="Voice Chat" icon="microphone" href="/features/voice-rtc">
+    Enable voice communication in lobbies
+  </Card>
+  <Card title="HLobbies API" icon="code" href="/reference/hlobbies">
+    Complete lobbies API reference
+  </Card>
+</CardGroup>

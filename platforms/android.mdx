@@ -1,0 +1,281 @@
+---
+title: Android Setup
+description: Complete setup guide for Epic Online Services in Godot on Android
+---
+
+## Overview
+
+Epic Online Services Godot (EOSG) supports Android x64 and arm64 architectures. This guide covers the complete setup process for exporting your game to Android.
+
+## Prerequisites
+
+- Godot Engine 4.2 or later
+- Android Build Template configured in your project
+- Epic Online Services credentials (Client ID, etc.)
+- Basic understanding of Gradle builds
+
+## Platform Support
+
+EOSG supports:
+- **Android x64**
+- **Android arm64**
+
+Minimum SDK version: **23** (required by EOS Android SDK)
+
+## Quick Setup (Community Plugin)
+
+For a faster setup process, you can use the community-created [Android Export Plugin](https://github.com/uno1982/EOSG-android-exporter).
+
+Or follow the manual setup steps below for complete control.
+
+## Manual Android Export Setup
+
+<Steps>
+
+<Step title="Set up Android Build Template">
+
+First, configure the Android Build Template in your Godot project by following the tutorial: [Gradle builds for Android](https://docs.godotengine.org/en/stable/tutorials/export/android_gradle_build.html).
+
+This creates an Android project in `res://android/build`.
+
+</Step>
+
+<Step title="Add EOS SDK dependencies to build.gradle">
+
+In the `res://android/build/build.gradle` file, add the EOS SDK dependencies after the existing implementations in the `dependencies` section.
+
+**Before:**
+
+```gradle
+dependencies {
+    implementation libraries.kotlinStdLib
+    implementation libraries.androidxFragment
+    ... other code
+```
+
+**After:**
+
+```gradle
+dependencies {
+    implementation libraries.kotlinStdLib
+    implementation libraries.androidxFragment
+
+    // EOS SDK dependencies
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.security:security-crypto:1.0.0'
+    implementation 'androidx.browser:browser:1.4.0'
+    implementation 'androidx.webkit:webkit:1.7.0'
+    // Update the path so that it points to eossdk-StaticSTDC-release.aar
+    implementation files('../../addons/epic-online-services-godot/bin/android/eossdk-StaticSTDC-release.aar')
+
+    ...other code
+```
+
+<Warning>
+Make sure the path to `eossdk-StaticSTDC-release.aar` correctly points to the file in your project's `addons/epic-online-services-godot/bin/android/` directory.
+</Warning>
+
+</Step>
+
+<Step title="Configure EOS login protocol scheme">
+
+In the `res://android/build/build.gradle` file, add the EOS login protocol scheme configuration in the `defaultConfig` section within the `android` block.
+
+**Before:**
+
+```gradle
+android {
+
+    ... other code
+
+    defaultConfig {
+        ... other code
+
+        // Feel free to modify the application id to your own.
+        applicationId getExportPackageName()
+        versionCode getExportVersionCode()
+        versionName getExportVersionName()
+        minSdkVersion getExportMinSdkVersion()
+        targetSdkVersion getExportTargetSdkVersion()
+
+        missingDimensionStrategy 'products', 'template'
+    }
+
+    ... other code
+```
+
+**After:**
+
+```gradle
+android {
+
+    ... other code
+
+    defaultConfig {
+        ... other code
+
+        // Feel free to modify the application id to your own.
+        applicationId getExportPackageName()
+        versionCode getExportVersionCode()
+        versionName getExportVersionName()
+        minSdkVersion getExportMinSdkVersion()
+        targetSdkVersion getExportTargetSdkVersion()
+
+        missingDimensionStrategy 'products', 'template'
+
+        // This is needed by EOS Android SDK
+        String ClientId = "PUT YOUR EOS CLIENT ID HERE"
+        resValue("string", "eos_login_protocol_scheme", "eos." + ClientId.toLowerCase())
+    }
+
+    ... other code
+```
+
+<Warning>
+Replace `"PUT YOUR EOS CLIENT ID HERE"` with your actual Epic Online Services Client ID.
+</Warning>
+
+</Step>
+
+<Step title="Update minimum SDK version">
+
+In the `res://android/build/config.gradle` file, update the `minSdk` to `23` to match the requirements of the EOS Android SDK.
+
+**Before:**
+
+```gradle
+minSdk             : 21,
+```
+
+**After:**
+
+```gradle
+minSdk             : 23,
+```
+
+</Step>
+
+<Step title="Update GodotApp.java">
+
+In the `res://android/build/src/com/godot/game/GodotApp.java` file (or `GodotGame.java`), update it to initialize the EOS SDK:
+
+```java
+package com.godot.game;
+
+import com.epicgames.mobile.eossdk.EOSSDK;     // added
+import org.godotengine.godot.GodotActivity;
+
+import android.os.Bundle;
+
+public class GodotApp extends GodotActivity {
+    static {                                   // added
+        System.loadLibrary("EOSSDK");          // added
+    }                                          // added
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        EOSSDK.init(getActivity());  // added
+
+        setTheme(R.style.GodotAppMainTheme);
+        super.onCreate(savedInstanceState);
+
+    }
+}
+```
+
+<Note>
+The file might be named `GodotGame.java` instead of `GodotApp.java` depending on your setup.
+</Note>
+
+</Step>
+
+<Step title="Configure Android export preset">
+
+1. Open your project in the Godot Editor
+2. Go to **Project → Export**
+3. Create a new Android export profile
+4. In the **Gradle Build** section, enable **Use Gradle Build**
+5. In the **Architectures** section, enable **arm64-v8a**
+6. In the **Permissions** section, ensure the following are enabled:
+   - `ACCESS_NETWORK_STATE`
+   - `ACCESS_WIFI_STATE`
+   - `INTERNET`
+
+<Note>
+These permissions are required for the EOS SDK to function properly.
+</Note>
+
+7. Fill in other details such as package name, version, etc. as needed
+
+</Step>
+
+<Step title="Export the Android APK">
+
+Click the **Export Project** button to generate your Android APK.
+
+</Step>
+
+</Steps>
+
+## Architecture Support
+
+EOSG supports both x64 and arm64 architectures for Android:
+
+- **arm64-v8a**: Recommended for production releases (best performance on modern devices)
+- **x86_64**: Useful for testing on emulators
+
+For production, it's recommended to enable **arm64-v8a** architecture.
+
+## Required Permissions
+
+Ensure these permissions are enabled in your Android export preset:
+
+| Permission | Purpose |
+|------------|----------|
+| `INTERNET` | Required for all network communication with EOS |
+| `ACCESS_NETWORK_STATE` | Check network connectivity status |
+| `ACCESS_WIFI_STATE` | Check WiFi connectivity status |
+
+## Testing on Android
+
+After building your APK:
+
+1. Install the APK on your Android device or emulator
+2. Launch the app and verify EOS initialization
+3. Test authentication (Device ID or other supported methods)
+4. Test multiplayer features if applicable
+
+## Troubleshooting
+
+### Build Fails with Missing AAR File
+
+- Verify the path to `eossdk-StaticSTDC-release.aar` in `build.gradle`
+- Ensure the EOSG plugin is properly installed in `res://addons/epic-online-services-godot/`
+
+### EOS SDK Initialization Fails
+
+- Check that `EOSSDK.init(getActivity());` is called in `GodotApp.java`
+- Verify the `System.loadLibrary("EOSSDK");` static block is present
+- Review logcat output for specific error messages
+
+### Minimum SDK Version Error
+
+- Ensure `minSdk` is set to `23` in `config.gradle`
+- The EOS Android SDK requires API level 23 or higher
+
+### Client ID Not Configured
+
+- Make sure you replaced `"PUT YOUR EOS CLIENT ID HERE"` with your actual Client ID
+- The Client ID should be lowercase in the protocol scheme
+
+### Network Permissions Denied
+
+- Verify all three network permissions are enabled in the export preset
+- Check that the permissions are present in the generated `AndroidManifest.xml`
+
+## Next Steps
+
+- [Configure EOS credentials](/getting-started/credentials)
+- [Test authentication on Android](/features/authentication)
+- [Cross-platform multiplayer](/features/lobbies)

@@ -1,0 +1,214 @@
+---
+title: iOS Setup
+description: Complete setup guide for Epic Online Services in Godot on iOS
+---
+
+## Overview
+
+Epic Online Services Godot (EOSG) supports iOS with full arm64 compatibility for both physical devices and simulators. This guide covers the setup process for exporting your game to iOS.
+
+## Prerequisites
+
+- Godot Engine 4.2 or later
+- macOS with Xcode installed
+- Apple Developer account (for device deployment)
+- Epic Online Services credentials
+
+## Platform Support
+
+EOSG supports:
+- **iOS arm64 device** (iPhone, iPad)
+- **iOS arm64 simulator** (M1/M2/M3 Macs)
+
+## Export Process
+
+The iOS export process is straightforward but requires building through Xcode.
+
+<Steps>
+
+<Step title="Export from Godot Editor">
+
+1. Open your project in the Godot Editor
+2. Go to **Project → Export**
+3. Create a new iOS export preset (if not already created)
+4. Configure your export settings:
+   - App name
+   - Bundle identifier
+   - Version information
+   - Icons and launch screens
+5. Click **Export Project** and select a destination folder
+
+<Note>
+You might get a build error during this initial export process. This is expected - you'll fix it by building through Xcode in the next step.
+</Note>
+
+</Step>
+
+<Step title="Open the generated iOS project in Xcode">
+
+1. Navigate to the folder where you exported the project
+2. Open the `.xcodeproj` file with Xcode
+3. Let Xcode load and index the project
+
+</Step>
+
+<Step title="Build the project in Xcode">
+
+1. Select your target device or simulator from the device dropdown
+2. Click the **Build** button (or press Cmd+B)
+3. The build should complete successfully
+
+<Note>
+EOSG has built-in support for iOS arm64 device and iOS arm64 simulator, so the project should build without additional configuration.
+</Note>
+
+</Step>
+
+<Step title="Run and test">
+
+1. With your iOS device connected or a simulator selected, click **Run** (or press Cmd+R)
+2. The app should launch on your device/simulator
+3. Test EOS functionality (authentication, multiplayer, etc.)
+
+</Step>
+
+</Steps>
+
+## Architecture Support
+
+EOSG provides full support for:
+
+- **arm64 Physical Devices**: iPhone and iPad with Apple Silicon or A-series chips
+- **arm64 Simulator**: For testing on M1/M2/M3 Macs without a physical device
+
+<Warning>
+Intel-based Mac simulators (x86_64) are not supported. You must use an Apple Silicon Mac or test on physical devices.
+</Warning>
+
+## iOS-Specific Considerations
+
+### Network Permissions
+
+iOS requires proper network permissions configuration. Ensure your `Info.plist` includes:
+
+- Network usage descriptions (if prompted during export)
+- Local network permissions (for P2P features)
+
+### Background Modes
+
+If your game uses voice chat or needs to maintain network connections in the background:
+
+1. In Xcode, go to your target's **Signing & Capabilities** tab
+2. Add **Background Modes** capability
+3. Enable relevant modes (Audio, Network, etc.)
+
+### App Transport Security
+
+EOS SDK handles secure connections, but ensure your `Info.plist` doesn't block necessary network requests. The default configuration should work for EOS.
+
+## Testing
+
+### On Physical Device
+
+1. Connect your iOS device to your Mac
+2. Select the device in Xcode's device dropdown
+3. Build and run the project
+4. Test all EOS features (authentication, lobbies, etc.)
+
+### On Simulator
+
+1. Launch an arm64 simulator (iPhone 14, 15, etc. on Apple Silicon Mac)
+2. Select the simulator in Xcode
+3. Build and run the project
+4. Test EOS functionality
+
+<Note>
+Some features like push notifications won't work in the simulator, but core EOS functionality should work normally.
+</Note>
+
+## Cross-Platform Testing
+
+iOS builds can seamlessly connect with other platforms. Test cross-platform lobbies by:
+
+1. Running your game on iOS (device or simulator)
+2. Running your game on another platform (Windows, macOS, Android, Linux)
+3. Creating or joining a lobby from either platform
+4. Verifying connectivity and gameplay
+
+**Example cross-platform setups:**
+- iOS (simulator) ↔ macOS (desktop)
+- iPhone ↔ Windows PC
+- iPad ↔ Android tablet
+
+## Troubleshooting
+
+### Initial Export Build Error
+
+**Problem**: Godot export fails with build errors
+
+**Solution**: This is expected. Export the project anyway, then build it through Xcode. The Xcode build should succeed.
+
+### Simulator Not Available
+
+**Problem**: Can't find compatible simulators
+
+**Solution**: 
+- Ensure you're using an Apple Silicon Mac (M1/M2/M3)
+- Install iOS simulators through Xcode → Settings → Platforms
+- EOSG only supports arm64 simulators
+
+### Build Fails in Xcode
+
+**Problem**: Xcode build fails with linking errors
+
+**Solutions**:
+- Verify that the EOSG plugin is properly installed in your Godot project
+- Ensure you're using Godot 4.2 or later
+- Check that you've exported with the correct iOS preset
+- Clean build folder (Product → Clean Build Folder) and try again
+
+### EOS Initialization Fails
+
+**Problem**: App launches but EOS SDK doesn't initialize
+
+**Solutions**:
+- Check that your EOS credentials are correctly configured
+- Verify network connectivity on the device/simulator
+- Review console logs in Xcode for specific error messages
+- Ensure your Epic Games product is properly configured
+
+### Code Signing Issues
+
+**Problem**: Can't build due to code signing errors
+
+**Solutions**:
+- Configure your development team in Xcode
+- Ensure your Apple Developer account is properly set up
+- For testing on personal devices, enable "Automatically manage signing"
+
+### Network Features Not Working
+
+**Problem**: P2P or voice features don't work
+
+**Solutions**:
+- Check that required network permissions are in `Info.plist`
+- Enable necessary Background Modes in Xcode
+- Verify that your device/simulator has network connectivity
+- Test with a different network (cellular vs WiFi)
+
+## Building from Source
+
+If you need to build the EOSG plugin from source for iOS:
+
+```bash
+scons platform=ios target=template_release
+```
+
+The built library will be in `res://addons/epic-online-services-godot/bin/`.
+
+## Next Steps
+
+- [Configure EOS credentials](/getting-started/credentials)
+- [Implement authentication](/features/authentication)
+- [Set up cross-platform lobbies](/features/lobbies)
+- [Test voice chat](/features/voice)

@@ -1,0 +1,224 @@
+---
+title: HLog
+description: Logging utility for HEOS classes
+---
+
+## Overview
+
+HLog provides a logging system for the High Level API (HEOS) classes. It allows you to control the verbosity of logs and create logger instances for different components.
+
+<Note>
+HLog is for logging from HEOS classes. For EOS SDK logging, see `EOS.Logging`.
+</Note>
+
+## Log Levels
+
+```gdscript
+enum LogLevel {
+    OFF,
+    ERROR,
+    WARN,
+    INFO,
+    DEBUG,
+    VERBOSE,
+}
+```
+
+Log levels in order from least to most verbose:
+- `OFF` - No logging
+- `ERROR` - Only errors
+- `WARN` - Warnings and errors
+- `INFO` - Informational messages, warnings, and errors (default)
+- `DEBUG` - Debug messages and everything above
+- `VERBOSE` - All messages including verbose output
+
+## Properties
+
+### log_level
+
+```gdscript
+static var log_level: HLog.LogLevel = LogLevel.INFO
+```
+
+Current log level. Set this to control the verbosity of HEOS logging.
+
+**Example:**
+```gdscript
+# Set to debug mode
+HLog.log_level = HLog.LogLevel.DEBUG
+
+# Disable all HEOS logging
+HLog.log_level = HLog.LogLevel.OFF
+
+# Only show errors
+HLog.log_level = HLog.LogLevel.ERROR
+```
+
+## Methods
+
+### logger
+
+```gdscript
+static func logger(clazz_name: String) -> HEOSLogger
+```
+
+Returns a new logger for the given class name.
+
+**Parameters:**
+- `clazz_name`: Name of the class for logging context
+
+**Returns:** HEOSLogger instance
+
+**Example:**
+```gdscript
+var _log = HLog.logger("MyGameManager")
+
+func _ready():
+    _log.info("Game manager initialized")
+    _log.debug("Loading configuration...")
+```
+
+Source: [hlog.gd:21](https://github.com/YOUR_REPO/hlog.gd#L21)
+
+## HEOSLogger
+
+Logger instance used internally by HEOS classes. You can also use it in your own code.
+
+### Methods
+
+#### verbose
+
+```gdscript
+func verbose(msg: String) -> void
+```
+
+Log a verbose message. Only shown when log level is VERBOSE.
+
+#### debug
+
+```gdscript
+func debug(msg: String) -> void
+```
+
+Log a debug message. Only shown when log level is DEBUG or VERBOSE.
+
+#### info
+
+```gdscript
+func info(msg: String) -> void
+```
+
+Log an informational message. Shown when log level is INFO, DEBUG, or VERBOSE.
+
+#### warn
+
+```gdscript
+func warn(msg: String) -> void
+```
+
+Log a warning message. Shown when log level is WARN or higher.
+
+#### error
+
+```gdscript
+func error(msg: String) -> void
+```
+
+Log an error message. Shown when log level is ERROR or higher.
+
+## Usage Example
+
+```gdscript
+extends Node
+
+var _log = HLog.logger("GameController")
+
+func _ready():
+    # Set log level for development
+    if OS.is_debug_build():
+        HLog.log_level = HLog.LogLevel.DEBUG
+    else:
+        HLog.log_level = HLog.LogLevel.INFO
+    
+    _log.info("Game controller initialized")
+    initialize_game()
+
+func initialize_game():
+    _log.debug("Starting game initialization...")
+    
+    var config = load_config()
+    if not config:
+        _log.error("Failed to load configuration")
+        return
+    
+    _log.verbose("Config loaded: %s" % str(config))
+    _log.info("Game initialized successfully")
+
+func load_config() -> Dictionary:
+    _log.debug("Loading configuration from file...")
+    
+    var file_path = "user://config.json"
+    if not FileAccess.file_exists(file_path):
+        _log.warn("Config file not found, using defaults")
+        return get_default_config()
+    
+    # Load config...
+    return {}
+
+func get_default_config() -> Dictionary:
+    _log.verbose("Generating default configuration")
+    return {"volume": 0.5, "fullscreen": false}
+```
+
+## Log Format
+
+Logs are output in the following format:
+
+```
+[TIMESTAMP] [LEVEL] [CLASS_NAME] MESSAGE
+```
+
+Example:
+```
+2026-03-03T10:30:45 [INFO] [GameController] Game initialized successfully
+2026-03-03T10:30:46 [DEBUG] [HAuth] Logging in using Epic Account Portal...
+2026-03-03T10:30:47 [ERROR] [HPlatform] Failed to initialize EOS SDK: InvalidParameters
+```
+
+## Comparison with EOS.Logging
+
+| Feature | HLog | EOS.Logging |
+|---------|------|-------------|
+| Purpose | HEOS classes logging | EOS SDK internal logging |
+| Configuration | `HLog.log_level` | `HPlatform.set_eos_log_level()` |
+| Output | Godot console | Godot console via signal |
+| Use case | Your game code & HEOS | EOS SDK debugging |
+
+**Example using both:**
+```gdscript
+func _ready():
+    # Set HEOS log level
+    HLog.log_level = HLog.LogLevel.DEBUG
+    
+    # Set EOS SDK log level
+    await HPlatform.platform_initialized
+    HPlatform.set_eos_log_level(EOS.Logging.LogCategory.AllCategories, EOS.Logging.LogLevel.Verbose)
+    
+    # Connect to EOS SDK log messages
+    HPlatform.log_msg.connect(_on_eos_log_msg)
+
+func _on_eos_log_msg(msg: EOS.Logging.LogMessage):
+    print("[EOS] ", msg.message)
+```
+
+## Best Practices
+
+1. **Use appropriate levels**: Reserve ERROR for actual errors, INFO for important events, DEBUG for development
+2. **Set based on build type**: Use DEBUG or VERBOSE in development builds, INFO or WARN in production
+3. **Create named loggers**: Use `HLog.logger("ClassName")` to identify log sources
+4. **Avoid verbose in production**: VERBOSE logging can impact performance
+5. **Monitor EOS logs separately**: Use both HLog and EOS.Logging for comprehensive debugging
+
+<Warning>
+VERBOSE logging can generate a large amount of output and may impact performance. Use it only during development and debugging.
+</Warning>

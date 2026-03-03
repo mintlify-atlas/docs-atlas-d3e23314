@@ -1,0 +1,125 @@
+---
+title: Development Setup
+description: Build the Epic Online Services Godot GDExtension from source
+---
+
+This guide covers how to build the EOSG GDExtension plugin from source for development purposes.
+
+## Prerequisites
+
+Before building from source, ensure you have:
+
+- Godot Engine 4.2+ ([Download here](https://godotengine.org/download/))
+- Epic Online Services C SDK ([Download from Epic Developer Portal](https://dev.epicgames.com/portal/sdk))
+- Accepted the [Epic Online Services Terms and Conditions](https://www.epicgames.com/site/en-US/tos?lang=en-US)
+- A product registered with Epic Games Services ([Create one for free](https://dev.epicgames.com/portal))
+- SCons build system installed
+
+## Setup Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    Download or clone the EOSG repository:
+    
+    ```bash
+    git clone https://github.com/3ddelano/epic-online-services-godot.git
+    cd epic-online-services-godot
+    ```
+  </Step>
+
+  <Step title="Initialize submodules">
+    The project uses git submodules for `godot-cpp`. Initialize them:
+    
+    ```bash
+    git submodule update --init --recursive
+    ```
+  </Step>
+
+  <Step title="Add the EOS C SDK">
+    Extract the EOS C SDK zip file downloaded from Epic Games, rename the folder to `eos-sdk`, and place it in the `thirdparty/` directory.
+    
+    Your folder structure should look like:
+    ```
+    thirdparty/
+    └── eos-sdk/
+        └── SDK/
+            ├── Bin/
+            ├── Include/
+            └── Lib/
+    ```
+  </Step>
+
+  <Step title="Build for debug (with symbols)">
+    Build the GDExtension in debug mode with debug symbols:
+    
+    ```bash
+    scons platform=<platform> target=template_debug dev_build=yes
+    ```
+    
+    For example, on Windows:
+    ```bash
+    scons platform=windows target=template_debug dev_build=yes
+    ```
+    
+    Available platforms: `windows`, `linux`, `macos`, `android`, `ios`
+  </Step>
+
+  <Step title="Build for release (optimized)">
+    For a production-ready optimized build:
+    
+    ```bash
+    scons platform=<platform> target=template_release
+    ```
+    
+    Example:
+    ```bash
+    scons platform=windows target=template_release
+    ```
+  </Step>
+
+  <Step title="Locate the built library">
+    After building, the GDExtension library will be located in:
+    ```
+    sample/addons/epic-online-services-godot/bin/<platform>/
+    ```
+  </Step>
+</Steps>
+
+## Platform-Specific Notes
+
+### Linux ARM64
+
+For ARM64 builds on Linux:
+```bash
+scons platform=linux arch=arm64 target=template_release
+```
+
+### macOS Debugging
+
+If you encounter "Not allowed to attach to process" when debugging on macOS with LLDB:
+
+```bash
+codesign --entitlements debug-entitlements.plist -f -s - /Applications/Godot.app/Contents/MacOS/Godot
+```
+
+### iOS
+
+Only ARM64 is supported on iOS. The build automatically handles both device and simulator variants.
+
+### Android
+
+The Android build automatically extracts and configures the EOS Android SDK libraries from the `.aar` file.
+
+## Build Targets
+
+- `template_debug` - Debug build with symbols (larger file size)
+- `template_release` - Optimized release build (smaller file size)
+- `dev_build=yes` - Enables additional debug features
+
+## Next Steps
+
+After building the plugin, you can:
+
+1. Copy the `addons/epic-online-services-godot` folder to your project
+2. Enable the plugin in Project Settings → Plugins
+3. Follow the [Bootstrapping EOS](/guides/bootstrapping-eos) guide to configure authentication

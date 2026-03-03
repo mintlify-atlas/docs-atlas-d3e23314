@@ -1,0 +1,261 @@
+---
+title: 'HPlatform'
+description: 'Core platform initialization and configuration for Epic Online Services'
+---
+
+## Overview
+
+The `HPlatform` class handles the initialization and creation of the EOS platform. It manages SDK initialization, platform creation, and logging configuration. This is typically the first HEOS class you'll interact with when setting up Epic Online Services.
+
+## Signals
+
+### platform_initialized
+
+Emitted when the EOS platform was initialized successfully.
+
+```gdscript
+signal platform_initialized
+```
+
+### platform_created
+
+Emitted when the EOS platform was created successfully.
+
+```gdscript
+signal platform_created
+```
+
+### log_msg
+
+Emitted when the EOS SDK produces a log message. Use this signal to handle the log however you want.
+
+```gdscript
+signal log_msg(msg: EOS.Logging.LogMessage)
+```
+
+<ParamField path="msg" type="EOS.Logging.LogMessage">
+  The log message from the EOS SDK
+</ParamField>
+
+## Constants
+
+### INITIALIZE_RETRY_COUNT
+
+Number of times to retry initializing the EOS SDK.
+
+```gdscript
+const INITIALIZE_RETRY_COUNT = 10
+```
+
+### INITIALIZE_RETRY_DElAY_SEC
+
+Delay between retries initializing the EOS SDK in seconds.
+
+```gdscript
+const INITIALIZE_RETRY_DElAY_SEC = 0.2
+```
+
+### CREATE_RETRY_COUNT
+
+Number of times to retry creating the EOS platform.
+
+```gdscript
+const CREATE_RETRY_COUNT = 10
+```
+
+### CREATE_RETRY_DElAY_SEC
+
+Delay between retries creating the EOS platform in seconds.
+
+```gdscript
+const CREATE_RETRY_DElAY_SEC = 0.2
+```
+
+## Properties
+
+### cache_directory
+
+```gdscript
+var cache_directory: String
+```
+
+Absolute path to the folder that is going to be used for caching temporary data. Defaults to `ProjectSettings.globalize_path("user://eosg-cache")`.
+
+### flags
+
+```gdscript
+var flags: int
+```
+
+Platform creation flags. This is a bitwise (union) of `EOS.Platform.PlatformFlags`.
+
+### is_server
+
+```gdscript
+var is_server: bool
+```
+
+Set to true if its a dedicated game server.
+
+### override_country_code
+
+```gdscript
+var override_country_code: String
+```
+
+Override country code for the logged-in user.
+
+### override_locale_code
+
+```gdscript
+var override_locale_code: String
+```
+
+Override local code for the logged-in user.
+
+### tick_budget_in_milliseconds
+
+```gdscript
+var tick_budget_in_milliseconds: int
+```
+
+Budget, measured in milliseconds, for EOS_Platform_Tick to do its work. Set it according to your desired FPS.
+
+### task_network_timeout_seconds
+
+```gdscript
+var task_network_timeout_seconds: float
+```
+
+Number of seconds for a task to wait for the network to become available before timing out with an EOS_TimedOut error.
+
+### rtc_options_background_mode
+
+```gdscript
+var rtc_options_background_mode
+```
+
+Configures RTC behavior upon entering to any background application statuses. See `EOS.Platform.RTCBackgroundMode`.
+
+## Methods
+
+### setup_eos_async
+
+```gdscript
+func setup_eos_async(p_creds: HCredentials) -> bool
+```
+
+Easy setup for EOS. Returns true if EOS setup is success.
+
+<ParamField path="p_creds" type="HCredentials" required>
+  Credentials for Epic Online Services
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if EOS setup was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var creds = HCredentials.new()
+creds.product_name = "My Game"
+creds.product_version = "1.0"
+creds.product_id = "your_product_id"
+creds.sandbox_id = "your_sandbox_id"
+creds.deployment_id = "your_deployment_id"
+creds.client_id = "your_client_id"
+creds.client_secret = "your_client_secret"
+
+var success = await HPlatform.setup_eos_async(creds)
+if success:
+    print("EOS initialized successfully")
+```
+
+### initialize_async
+
+```gdscript
+func initialize_async(opts: EOS.Platform.InitializeOptions) -> EOS.Result
+```
+
+Initialize the EOS SDK.
+
+<ParamField path="opts" type="EOS.Platform.InitializeOptions" required>
+  Initialization options for the EOS SDK
+</ParamField>
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from the initialization attempt
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var init_opts = EOS.Platform.InitializeOptions.new()
+init_opts.product_name = "My Game"
+init_opts.product_version = "1.0"
+
+var result = await HPlatform.initialize_async(init_opts)
+if EOS.is_success(result):
+    print("SDK initialized")
+```
+
+### set_eos_log_level
+
+```gdscript
+func set_eos_log_level(log_category: EOS.Logging.LogCategory, log_level: EOS.Logging.LogLevel) -> EOS.Result
+```
+
+Set the logging level for the EOS SDK.
+
+<ParamField path="log_category" type="EOS.Logging.LogCategory" required>
+  The log category to configure
+</ParamField>
+
+<ParamField path="log_level" type="EOS.Logging.LogLevel" required>
+  The log level to set
+</ParamField>
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from setting the log level
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var result = HPlatform.set_eos_log_level(
+    EOS.Logging.LogCategory.AllCategories,
+    EOS.Logging.LogLevel.Info
+)
+```
+
+### create_platform_async
+
+```gdscript
+func create_platform_async(opts: EOS.Platform.CreateOptions) -> bool
+```
+
+Create the EOS Platform.
+
+<ParamField path="opts" type="EOS.Platform.CreateOptions" required>
+  Options for creating the EOS platform
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if platform was created successfully, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var create_opts = EOS.Platform.CreateOptions.new()
+create_opts.product_id = "your_product_id"
+create_opts.sandbox_id = "your_sandbox_id"
+create_opts.deployment_id = "your_deployment_id"
+create_opts.client_id = "your_client_id"
+create_opts.client_secret = "your_client_secret"
+
+var success = await HPlatform.create_platform_async(create_opts)
+if success:
+    print("Platform created")
+```

@@ -1,0 +1,441 @@
+---
+title: EOSGPacketPeerMediator
+description: API reference for EOSGPacketPeerMediator class
+---
+
+## Overview
+
+EOSGPacketPeerMediator is a singleton class that manages all active EOSGMultiplayerPeer instances. It receives packets from the EOS P2P interface every process frame, routes them to the appropriate multiplayer instance based on socket ID, and forwards EOS connection notifications.
+
+**Extends:** `RefCounted`
+
+**Source Files:**
+- `eosg_packet_peer_mediator.h:50`
+- `eosg_packet_peer_mediator.cpp:1`
+
+## How It Works
+
+1. **Registration**: Multiplayer instances register their socket ID when they become active
+2. **Packet Routing**: Every process frame, the mediator polls packets from EOS and sorts them by destination socket
+3. **Priority Queuing**: Peer ID packets are pushed to the front of the queue for faster connection establishment
+4. **Notification Forwarding**: EOS connection callbacks (established, interrupted, closed, requests) are forwarded to the appropriate instance
+5. **Connection Request Management**: Holds connection requests if no matching socket exists, forwards them when a matching socket is opened
+6. **Unregistration**: Instances unregister when they close
+
+## Singleton Access
+
+```gdscript
+var mediator = EOSGPacketPeerMediator.get_singleton()
+```
+
+The mediator is automatically created and initialized when a user logs in via the Connect interface.
+
+## Methods
+
+### get_total_packet_count
+
+```gdscript
+func get_total_packet_count() -> int
+```
+
+Returns the total number of queued packets across all sockets.
+
+**Source:** `eosg_packet_peer_mediator.h:90`
+
+**Example:**
+```gdscript
+var mediator = EOSGPacketPeerMediator.get_singleton()
+print("Total queued packets: ", mediator.get_total_packet_count())
+```
+
+### get_packet_count_for_socket
+
+```gdscript
+func get_packet_count_for_socket(socket_id: String) -> int
+```
+
+Returns the number of packets queued for a specific socket.
+
+**Parameters:**
+- `socket_id` - The socket ID to check
+
+**Returns:** Packet count, or `0` if socket doesn't exist
+
+**Source:** `eosg_packet_peer_mediator.h:98`
+
+### get_sockets
+
+```gdscript
+func get_sockets() -> Array
+```
+
+Returns an array of all registered socket IDs.
+
+**Source:** `eosg_packet_peer_mediator.h:103`
+
+**Example:**
+```gdscript
+var mediator = EOSGPacketPeerMediator.get_singleton()
+var sockets = mediator.get_sockets()
+for socket_id in sockets:
+    print("Active socket: ", socket_id)
+    print("  Packets: ", mediator.get_packet_count_for_socket(socket_id))
+```
+
+### has_socket
+
+```gdscript
+func has_socket(socket_id: String) -> bool
+```
+
+Returns whether a socket with the given ID is registered.
+
+**Parameters:**
+- `socket_id` - The socket ID to check
+
+**Source:** `eosg_packet_peer_mediator.h:111`
+
+### get_queue_size_limit
+
+```gdscript
+func get_queue_size_limit() -> int
+```
+
+Returns the maximum number of packets that can be queued before polling stops.
+
+**Default:** `5000`
+
+**Source:** `eosg_packet_peer_mediator.h:115`
+
+### set_queue_size_limit
+
+```gdscript
+func set_queue_size_limit(limit: int) -> void
+```
+
+Sets the maximum queue size limit. Must be greater than 0.
+
+**Parameters:**
+- `limit` - The new queue size limit
+
+**Source:** `eosg_packet_peer_mediator.h:119`
+
+**Example:**
+```gdscript
+var mediator = EOSGPacketPeerMediator.get_singleton()
+mediator.set_queue_size_limit(10000)  # Increase limit for high-traffic scenarios
+```
+
+### get_connection_request_count
+
+```gdscript
+func get_connection_request_count() -> int
+```
+
+Returns the number of pending connection requests that haven't been forwarded to any multiplayer instance.
+
+**Source:** `eosg_packet_peer_mediator.h:124`
+
+### get_packet_count_from_remote_user
+
+```gdscript
+func get_packet_count_from_remote_user(remote_user: String, socket_id: String) -> int
+```
+
+Counts the number of packets from a specific remote user for a given socket.
+
+**Parameters:**
+- `remote_user` - The EOS Product User ID to count packets from
+- `socket_id` - The socket ID to check
+
+**Returns:** Packet count from that user
+
+**Source:** `eosg_packet_peer_mediator.cpp:265`
+
+## Signals
+
+### packet_queue_full
+
+```gdscript
+signal packet_queue_full()
+```
+
+Emitted when the packet queue reaches the size limit. Polling will stop until packets are consumed.
+
+**Source:** `eosg_packet_peer_mediator.cpp:38`
+
+**Example:**
+```gdscript
+func _ready():
+    var mediator = EOSGPacketPeerMediator.get_singleton()
+    mediator.packet_queue_full.connect(_on_queue_full)
+
+func _on_queue_full():
+    print("WARNING: Packet queue is full!")
+    print("Consider processing packets faster or increasing the limit.")
+```
+
+### connection_request_received
+
+```gdscript
+signal connection_request_received(callback_data: Dictionary)
+```
+
+Emitted when a connection request is received but no matching socket is registered. The request is held until a matching socket is opened or the request times out.
+
+**callback_data keys:**
+- `local_user_id` (String) - Your EOS Product User ID
+- `remote_user_id` (String) - The requesting user's EOS Product User ID
+- `socket_id` (String) - The target socket ID
+
+**Source:** `eosg_packet_peer_mediator.cpp:39`
+
+### connection_request_removed
+
+```gdscript
+signal connection_request_removed(callback_data: Dictionary)
+```
+
+Emitted when a pending connection request is removed (either forwarded to a peer or the connection closed).
+
+**callback_data keys:**
+- `local_user_id` (String)
+- `remote_user_id` (String)
+- `socket_id` (String)
+
+**Source:** `eosg_packet_peer_mediator.cpp:40`
+
+## Initialization
+
+The mediator automatically initializes when a user logs in via the Connect interface. It:
+
+1. Sets the local user ID from the login callback
+2. Connects to the main loop's `process_frame` signal
+3. Registers EOS P2P callbacks for connection events
+
+**Source:** `eosg_packet_peer_mediator.cpp:218`
+
+You typically don't need to manually initialize the mediator, but if needed:
+
+```gdscript
+# The mediator initializes automatically on login
+# Manual initialization is handled internally
+```
+
+## Packet Queuing Behavior
+
+### Priority System
+
+The mediator uses a priority queuing system:
+
+- **Peer ID packets** (EVENT_RECIEVE_PEER_ID): Pushed to front of queue
+- **Regular packets** (EVENT_STORE_PACKET): Pushed to back of queue
+
+This ensures connection handshakes complete quickly.
+
+**Source:** `eosg_packet_peer_mediator.cpp:109`
+
+### Queue Size Management
+
+When the queue reaches the size limit:
+
+1. The `packet_queue_full` signal is emitted
+2. Packet polling stops until packets are consumed
+3. New packets from EOS are not polled (they remain in the EOS queue)
+
+**Source:** `eosg_packet_peer_mediator.cpp:57`
+
+## Usage Examples
+
+### Monitoring Packet Queue
+
+```gdscript
+extends Node
+
+var mediator: EOSGPacketPeerMediator
+
+func _ready():
+    mediator = EOSGPacketPeerMediator.get_singleton()
+    mediator.packet_queue_full.connect(_on_queue_full)
+
+func _process(_delta):
+    # Monitor queue usage
+    var total_packets = mediator.get_total_packet_count()
+    var queue_limit = mediator.get_queue_size_limit()
+    var usage_percent = (total_packets / float(queue_limit)) * 100
+    
+    if usage_percent > 80:
+        print("WARNING: Queue at %.1f%% capacity" % usage_percent)
+
+func _on_queue_full():
+    print("CRITICAL: Packet queue full!")
+    # Option 1: Increase the limit
+    mediator.set_queue_size_limit(mediator.get_queue_size_limit() * 2)
+    
+    # Option 2: Log which sockets are using the most space
+    var sockets = mediator.get_sockets()
+    for socket_id in sockets:
+        var count = mediator.get_packet_count_for_socket(socket_id)
+        print("Socket '%s': %d packets" % [socket_id, count])
+```
+
+### Tracking Connection Requests
+
+```gdscript
+extends Node
+
+var pending_requests: Array = []
+
+func _ready():
+    var mediator = EOSGPacketPeerMediator.get_singleton()
+    mediator.connection_request_received.connect(_on_request_received)
+    mediator.connection_request_removed.connect(_on_request_removed)
+
+func _on_request_received(data: Dictionary):
+    pending_requests.append(data)
+    print("Connection request received for socket: ", data["socket_id"])
+    print("From user: ", data["remote_user_id"])
+    print("Total pending: ", mediator.get_connection_request_count())
+
+func _on_request_removed(data: Dictionary):
+    pending_requests.erase(data)
+    print("Connection request removed: ", data["remote_user_id"])
+```
+
+### Debugging Active Sockets
+
+```gdscript
+func debug_print_mediator_status():
+    var mediator = EOSGPacketPeerMediator.get_singleton()
+    
+    print("=== Mediator Status ===")
+    print("Total packets queued: ", mediator.get_total_packet_count())
+    print("Queue size limit: ", mediator.get_queue_size_limit())
+    print("Pending connection requests: ", mediator.get_connection_request_count())
+    
+    var sockets = mediator.get_sockets()
+    print("Active sockets: ", sockets.size())
+    
+    for socket_id in sockets:
+        var packet_count = mediator.get_packet_count_for_socket(socket_id)
+        print("  - %s: %d packets" % [socket_id, packet_count])
+```
+
+### Adjusting Queue Size for High Traffic
+
+```gdscript
+func prepare_for_high_traffic():
+    var mediator = EOSGPacketPeerMediator.get_singleton()
+    
+    # Increase queue size for lobby servers or high player count games
+    mediator.set_queue_size_limit(15000)
+    
+    # Connect to monitor signal
+    mediator.packet_queue_full.connect(func():
+        print("Queue full - consider optimizing packet processing")
+    )
+```
+
+### Monitoring Per-User Packet Count
+
+```gdscript
+func check_user_packet_spam(user_id: String, socket_id: String):
+    var mediator = EOSGPacketPeerMediator.get_singleton()
+    var packet_count = mediator.get_packet_count_from_remote_user(user_id, socket_id)
+    
+    if packet_count > 100:
+        print("WARNING: User %s has %d packets queued!" % [user_id, packet_count])
+        # Potentially rate-limit or kick the user
+```
+
+## Internal Behavior
+
+### Process Frame Callback
+
+Every frame, the mediator:
+
+1. Checks if a local user ID is set (skips if not logged in)
+2. Checks if any sockets are registered (skips if none)
+3. Checks if queue is full (stops polling if full)
+4. Polls packets from EOS P2P interface
+5. Routes packets to appropriate socket queues
+6. Prioritizes peer ID packets by pushing to front
+
+**Source:** `eosg_packet_peer_mediator.cpp:52`
+
+### Connection Request Handling
+
+When a connection request is received:
+
+1. Check if a matching socket is registered
+2. If yes: Forward immediately to that multiplayer instance
+3. If no: Store in pending list and emit `connection_request_received`
+4. When a new socket registers: Forward any matching pending requests
+5. When a connection closes: Remove associated pending requests
+
+**Source:** `eosg_packet_peer_mediator.cpp:363`
+
+### Peer Registration
+
+When an EOSGMultiplayerPeer registers:
+
+1. Validates the peer has a valid socket
+2. Checks the socket isn't already registered
+3. Creates a new packet queue for the socket
+4. Forwards any pending connection requests for that socket
+
+**Source:** `eosg_packet_peer_mediator.cpp:149`
+
+### Peer Unregistration
+
+When an EOSGMultiplayerPeer unregisters:
+
+1. Clears all queued packets for that socket
+2. Removes the socket from the active list
+3. Removes the packet queue
+
+**Source:** `eosg_packet_peer_mediator.cpp:170`
+
+## Performance Considerations
+
+### Queue Size Tuning
+
+- **Default (5000)**: Suitable for most games with moderate packet rates
+- **High traffic (10000+)**: Lobby servers, MMOs, or games with many peers
+- **Low traffic (1000-3000)**: Small games, turn-based games
+
+**Source:** `eosg_packet_peer_mediator.h:62`
+
+### Memory Usage
+
+Each queued packet includes:
+- Packet data (up to ~1170 bytes)
+- Sender information
+- Channel information
+- Socket routing information
+
+At the default limit of 5000 packets, worst-case memory usage is approximately 6-7 MB.
+
+### Processing Overhead
+
+The mediator processes packets on the main thread during `process_frame`. If packet processing becomes a bottleneck:
+
+1. Reduce queue size to force packet consumption
+2. Optimize packet handling in your multiplayer code
+3. Reduce packet send frequency
+4. Use larger packets with batched data instead of many small packets
+
+## Important Notes
+
+- The mediator is a singleton - only one instance exists per game
+- It automatically initializes on Connect interface login
+- Packets are processed every frame on the main thread
+- Peer ID packets are prioritized for faster connection handshakes
+- Connection requests without matching sockets are held indefinitely (until timeout or socket opens)
+- The queue size limit applies to ALL sockets combined, not per socket
+- When the queue is full, new packets remain in the EOS queue and are polled when space is available
+
+## See Also
+
+- [EOSGMultiplayerPeer](/reference/eosg-multiplayer-peer) - Multiplayer peer implementation
+- [EOS P2P Interface Documentation](https://dev.epicgames.com/docs/game-services/p-2-p)

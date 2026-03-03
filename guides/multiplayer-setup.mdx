@@ -1,0 +1,381 @@
+---
+title: Multiplayer Setup
+description: Set up P2P multiplayer with EOS lobbies
+---
+
+This guide shows you how to set up peer-to-peer multiplayer using Epic Online Services lobbies and the built-in P2P networking.
+
+## Overview
+
+EOS provides a complete multiplayer solution with:
+- **Lobbies** - Matchmaking and player groups
+- **P2P Networking** - Direct peer-to-peer connections
+- **Voice Chat** - Built-in RTC audio/data channels
+- **EOSGMultiplayerPeer** - Godot-native networking integration
+
+## Prerequisites
+
+Before setting up multiplayer:
+
+1. Complete EOS initialization (see [Initialization guide](/docs/topics/initialization))
+2. User must be logged in
+3. Configure your EOS Product with appropriate Client Policies
+
+## Lobby-Based Multiplayer
+
+### Creating a Lobby
+
+The lobby acts as a gathering point for players before starting a game:
+
+<Steps>
+  <Step title="Create lobby options">
+    ```gdscript
+    func create_lobby():
+        var create_opts = EOS.Lobby.CreateLobbyOptions.new()
+        create_opts.bucket_id = "my_game_mode"  # For matchmaking
+        create_opts.max_lobby_members = 4
+        create_opts.permission_level = EOS.Lobby.LobbyPermissionLevel.PublicAdvertised
+        create_opts.presence_enabled = true
+        create_opts.enable_rtc_room = true  # Enable voice chat
+        create_opts.allow_invites = true
+        
+        # RTC options for voice/data
+        create_opts.local_rtc_options = {
+            flags = EOS.RTC.JoinRoomFlags.EnableDataChannel
+        }
+        
+        var lobby = await HLobbies.create_lobby_async(create_opts)
+        if not lobby:
+            print("Failed to create lobby")
+            return
+        
+        print("Lobby created: ", lobby.lobby_id)
+        return lobby
+    ```
+  </Step>
+
+  <Step title="Add lobby attributes">
+    Store game-specific information in lobby attributes:
+    
+    ```gdscript
+    # Add lobby-wide attributes
+    lobby.add_attribute("map", "forest_arena")
+    lobby.add_attribute("game_mode", "team_deathmatch")
+    lobby.add_attribute("owner_name", HAuth.display_name)
+    
+    # Add attributes for current member
+    lobby.add_current_member_attribute("username", HAuth.display_name)
+    lobby.add_current_member_attribute("player_class", "warrior")
+    lobby.add_current_member_attribute("level", "42")
+    
+    # Apply the changes
+    await lobby.update_async()
+    ```
+  </Step>
+
+  <Step title="Listen for lobby events">
+    ```gdscript
+    lobby.lobby_updated.connect(_on_lobby_updated)
+    lobby.kicked_from_lobby.connect(_on_kicked)
+    lobby.lobby_owner_changed.connect(_on_owner_changed)
+    
+    func _on_lobby_updated():
+        print("Lobby updated. Members: ", lobby.members.size())
+        _refresh_member_list()
+    
+    func _on_kicked():
+        print("Kicked from lobby!")
+        # Return to main menu
+    ```
+  </Step>
+</Steps>
+
+### Searching for Lobbies
+
+Players can search for available lobbies to join:
+
+```gdscript
+func search_lobbies():
+    var search_opts = EOS.Lobby.CreateLobbySearchOptions.new()
+    search_opts.max_results = 20
+    
+    var search = HLobbies.create_search(search_opts)
+    
+    # Add search filters
+    search.add_search_filter("map", "forest_arena", EOS.Lobby.ComparisonOp.Equal)
+    search.add_search_filter("game_mode", "team_deathmatch", EOS.Lobby.ComparisonOp.Equal)
+    
+    # Execute search
+    var lobbies = await search.find_async()
+    
+    print("Found ", lobbies.size(), " lobbies")
+    for lobby_info in lobbies:
+        print("Lobby: ", lobby_info.lobby_id)
+        print("  Owner: ", lobby_info.owner_product_user_id)
+        print("  Members: ", lobby_info.available_slots, "/", lobby_info.max_members)
+```
+
+### Joining a Lobby
+
+```gdscript
+func join_lobby(lobby_id: String):
+    var lobby = await HLobbies.join_lobby_by_id_async(lobby_id)
+    if not lobby:
+        print("Failed to join lobby")
+        return
+    
+    # Set member attributes
+    lobby.add_current_member_attribute("username", HAuth.display_name)
+    lobby.add_current_member_attribute("ready", "false")
+    await lobby.update_async()
+    
+    print("Joined lobby: ", lobby.lobby_id)
+```
+
+## P2P Networking with EOSGMultiplayerPeer
+
+Once in a lobby, use EOS P2P for game networking:
+
+<Steps>
+  <Step title="Create the multiplayer peer">
+    ```gdscript
+    var peer = EOSGMultiplayerPeer.new()
+    const SOCKET_NAME = "MY_GAME"
+    ```
+  </Step>
+
+  <Step title="Host creates server">
+    The lobby owner creates a server:
+    
+    ```gdscript
+    func create_server():
+        peer.create_server(SOCKET_NAME)
+        peer.peer_connected.connect(_on_peer_connected)
+        peer.peer_disconnected.connect(_on_peer_disconnected)
+        multiplayer.multiplayer_peer = peer
+        
+        print("Server created")
+    
+    func _on_peer_connected(peer_id: int):
+        var puid = peer.get_peer_user_id(peer_id)
+        print("Client connected: peer_id=", peer_id, " puid=", puid)
+        # Spawn player, etc.
+    ```
+  </Step>
+
+  <Step title="Clients join server">
+    Other lobby members connect to the host:
+    
+    ```gdscript
+    func join_server(host_product_user_id: String):
+        peer.create_client(SOCKET_NAME, host_product_user_id)
+        peer.peer_disconnected.connect(_on_server_disconnected)
+        multiplayer.multiplayer_peer = peer
+        
+        print("Connecting to host: ", host_product_user_id)
+    
+    func _on_server_disconnected(peer_id: int):
+        print("Disconnected from server")
+        multiplayer.multiplayer_peer = null
+    ```
+  </Step>
+
+  <Step title="Use Godot's high-level multiplayer">
+    Now you can use all of Godot's networking features:
+    
+    ```gdscript
+    # Synchronized variables
+    @export var health: int = 100:
+        set(value):
+            health = value
+            if multiplayer.is_server():
+                rpc("update_health", value)
+    
+    # RPC calls
+    @rpc("any_peer", "call_local", "reliable")
+    func player_shoot(position: Vector2, direction: Vector2):
+        # Spawn bullet, etc.
+        pass
+    
+    # MultiplayerSpawner and MultiplayerSynchronizer work normally
+    @onready var spawner: MultiplayerSpawner = $PlayerSpawner
+    ```
+  </Step>
+</Steps>
+
+## Complete Multiplayer Flow
+
+Here's a complete example of the multiplayer flow:
+
+```gdscript
+extends Node
+
+const SOCKET_NAME = "MyGame"
+var peer = EOSGMultiplayerPeer.new()
+var current_lobby: HLobby
+
+func create_and_host_lobby():
+    # Create lobby
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.bucket_id = "quickplay"
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.PublicAdvertised
+    opts.enable_rtc_room = true
+    opts.local_rtc_options = {flags = EOS.RTC.JoinRoomFlags.EnableDataChannel}
+    
+    current_lobby = await HLobbies.create_lobby_async(opts)
+    if not current_lobby:
+        return
+    
+    # Setup lobby
+    current_lobby.add_attribute("map", "arena_01")
+    current_lobby.add_current_member_attribute("username", HAuth.display_name)
+    await current_lobby.update_async()
+    
+    # Listen for updates
+    current_lobby.lobby_updated.connect(_on_lobby_updated)
+    
+    # Create P2P server when we're the owner
+    if current_lobby.is_owner():
+        _create_server()
+
+func _create_server():
+    peer.create_server(SOCKET_NAME)
+    peer.peer_connected.connect(_on_peer_connected)
+    multiplayer.multiplayer_peer = peer
+    print("Server started")
+
+func start_game():
+    # Only the host can start the game
+    if not current_lobby.is_owner():
+        return
+    
+    # Make lobby invite-only (hide from searches)
+    current_lobby.permission_level = EOS.Lobby.LobbyPermissionLevel.InviteOnly
+    await current_lobby.update_async()
+    
+    # Notify all players via RTC data channel
+    var game_data = {"type": "start_game", "map": "arena_01"}
+    current_lobby.rtc_send_data(var_to_bytes(game_data))
+    
+    # Load game scene
+    get_tree().change_scene_to_file("res://game.tscn")
+
+func _on_peer_connected(peer_id: int):
+    var puid = peer.get_peer_user_id(peer_id)
+    print("Player connected: ", puid)
+    # Spawn player for peer_id
+```
+
+## Voice Chat in Lobbies
+
+Enable voice communication between lobby members:
+
+```gdscript
+# Toggle mute/unmute
+func toggle_mute():
+    var current_member = current_lobby.get_current_member()
+    if current_member:
+        await current_member.toggle_mute_member_async()
+
+# Hard mute another player (lobby owner only)
+func hard_mute_player(member: HLobbyMember):
+    if current_lobby.is_owner():
+        await member.toggle_hard_mute_member_async()
+
+# Check member audio state
+func check_audio_state(member: HLobbyMember):
+    if member.rtc_state.is_talking:
+        print(member.display_name, " is talking")
+    if member.rtc_state.is_locally_muted:
+        print(member.display_name, " is muted")
+```
+
+## RTC Data Channel
+
+Send custom data through the lobby's RTC connection:
+
+```gdscript
+# Send chat message
+func send_chat_message(message: String):
+    var data = {
+        "type": "chat",
+        "username": HAuth.display_name,
+        "message": message
+    }
+    var success = current_lobby.rtc_send_data(var_to_bytes(data))
+    if not success:
+        print("Failed to send message")
+
+# Receive data
+func _ready():
+    current_lobby.rtc_data_received.connect(_on_rtc_data)
+
+func _on_rtc_data(raw_data: PackedByteArray):
+    var data = bytes_to_var(raw_data)
+    if data.type == "chat":
+        print(data.username, ": ", data.message)
+    elif data.type == "start_game":
+        _join_game()
+```
+
+## Best Practices
+
+### Lobby Management
+
+- Use descriptive `bucket_id` values for different game modes
+- Set `presence_enabled = true` to show lobbies in friends' social panels
+- Update lobby attributes when game state changes
+- Clean up lobbies by leaving or destroying them when done
+
+### Network Architecture
+
+- The lobby owner should be the P2P host
+- Use the lobby's RTC data channel for pre-game communication
+- Switch to P2P peer for actual gameplay networking
+- Handle host migration if the lobby owner leaves
+
+### Error Handling
+
+```gdscript
+# Always check for failures
+var lobby = await HLobbies.create_lobby_async(opts)
+if not lobby:
+    _show_error("Failed to create lobby")
+    return
+
+# Handle disconnections gracefully
+peer.peer_disconnected.connect(func(peer_id):
+    if multiplayer.is_server():
+        _remove_player(peer_id)
+    else:
+        _return_to_lobby("Connection lost")
+)
+```
+
+## Troubleshooting
+
+### Players Can't See Lobbies
+
+- Check `permission_level` is set to `PublicAdvertised`
+- Verify `bucket_id` matches in both create and search
+- Ensure lobby update was called after setting attributes
+
+### Voice Chat Not Working
+
+- Verify `enable_rtc_room = true` when creating lobby
+- Check `local_rtc_options.flags` includes appropriate RTC flags
+- Ensure members are not hard-muted
+
+### P2P Connection Fails
+
+- Verify both peers are logged in to EOS
+- Check that the socket name matches exactly
+- Ensure the host's `product_user_id` is correct
+- Review firewall and NAT settings
+
+## Next Steps
+
+- Learn about the [Social Overlay](/guides/social-overlay) for Windows
+- Explore the sample project's lobby implementation
+- Check the [P2P demo game](https://github.com/3ddelano/EOSGP2PInterfaceTestGame)

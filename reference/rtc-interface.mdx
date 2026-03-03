@@ -1,0 +1,233 @@
+---
+title: RTC Interface
+description: API reference for the EOS RTC (Real-Time Communication) Interface in Godot
+---
+
+The RTC Interface provides real-time voice chat capabilities for multiplayer games.
+
+## Overview
+
+The RTC Interface allows:
+
+- Voice chat in lobbies and sessions
+- Participant management
+- Audio input/output control
+- Room settings configuration
+- Blocking participants
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### rtc_interface_join_room
+
+```gdscript
+IEOS.rtc_interface_join_room(options: RefCounted) -> void
+```
+
+Joins an RTC room for voice chat.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `room_name` - RTC room name
+  - `client_base_url` - Client base URL
+  - `participant_token` - Participant token
+  - `participant_id` - Product User ID of participant
+  - `flags` - Room flags
+  - `manual_audio_input_enabled` - Boolean for manual audio input
+  - `manual_audio_output_enabled` - Boolean for manual audio output
+  - `client_data` - Optional user data
+
+**Callback Signal:** `rtc_interface_join_room_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `room_name` - Room name
+- `room_options` - Array of room option Dictionaries
+
+### rtc_interface_leave_room
+
+```gdscript
+IEOS.rtc_interface_leave_room(options: RefCounted) -> void
+```
+
+Leaves an RTC room.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `room_name` - RTC room name
+  - `client_data` - Optional user data
+
+**Callback Signal:** `rtc_interface_leave_room_callback`
+
+### rtc_interface_block_participant
+
+```gdscript
+IEOS.rtc_interface_block_participant(options: RefCounted) -> void
+```
+
+Blocks or unblocks a participant.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `room_name` - RTC room name
+  - `participant_id` - Product User ID to block/unblock
+  - `blocked` - Boolean (true to block, false to unblock)
+  - `client_data` - Optional user data
+
+**Callback Signal:** `rtc_interface_block_participant_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `room_name` - Room name
+- `participant_id` - Participant Product User ID
+- `blocked` - Boolean indicating blocked status
+
+### rtc_interface_set_setting
+
+```gdscript
+IEOS.rtc_interface_set_setting(options: RefCounted) -> int
+```
+
+Sets a global RTC setting.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `setting_name` - Setting name string
+  - `setting_value` - Setting value string
+
+**Returns:** EOS_EResult
+
+### rtc_interface_set_room_setting
+
+```gdscript
+IEOS.rtc_interface_set_room_setting(options: RefCounted) -> int
+```
+
+Sets a room-specific setting.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `room_name` - RTC room name
+  - `setting_name` - Setting name string
+  - `setting_value` - Setting value string
+
+**Returns:** EOS_EResult
+
+### rtc_interface_add_notify_disconnected
+
+```gdscript
+IEOS.rtc_interface_add_notify_disconnected(options: RefCounted) -> int
+```
+
+Adds a notification for room disconnection events.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `room_name` - RTC room name
+
+**Returns:** Notification ID
+
+**Notification Signal:** `rtc_interface_disconnected`
+
+### rtc_interface_add_notify_participant_status_changed
+
+```gdscript
+IEOS.rtc_interface_add_notify_participant_status_changed(options: RefCounted) -> int
+```
+
+Adds a notification for participant status changes.
+
+**Returns:** Notification ID
+
+**Notification Signal:** `rtc_interface_participant_status_changed`
+
+**Signal Parameters:**
+- `local_user_id` - Product User ID
+- `room_name` - Room name
+- `participant_id` - Participant Product User ID
+- `participant_status` - Participant status
+- `participant_in_blocklist` - Boolean
+- `participant_metadata` - Array of metadata Dictionaries
+
+### rtc_interface_add_notify_room_statistics_updated
+
+```gdscript
+IEOS.rtc_interface_add_notify_room_statistics_updated(options: RefCounted) -> int
+```
+
+Adds a notification for room statistics updates.
+
+**Returns:** Notification ID
+
+**Notification Signal:** `rtc_interface_room_statistics_updated`
+
+### rtc_interface_remove_notify_disconnected
+
+```gdscript
+IEOS.rtc_interface_remove_notify_disconnected(notification_id: int) -> void
+```
+
+Removes a disconnection notification.
+
+### rtc_interface_remove_notify_participant_status_changed
+
+```gdscript
+IEOS.rtc_interface_remove_notify_participant_status_changed(notification_id: int) -> void
+```
+
+Removes a participant status notification.
+
+### rtc_interface_remove_notify_room_statistics_updated
+
+```gdscript
+IEOS.rtc_interface_remove_notify_room_statistics_updated(notification_id: int) -> void
+```
+
+Removes a room statistics notification.
+
+## Example Usage
+
+```gdscript
+# Join RTC room for voice chat
+var join_options = {
+    "local_user_id": product_user_id,
+    "room_name": "lobby_" + lobby_id,
+    "client_base_url": "",
+    "participant_token": "",
+    "participant_id": product_user_id,
+    "flags": 0,
+    "manual_audio_input_enabled": false,
+    "manual_audio_output_enabled": false
+}
+
+IEOS.rtc_interface_join_room_callback.connect(_on_rtc_room_joined)
+IEOS.rtc_interface_join_room(join_options)
+
+func _on_rtc_room_joined(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Joined RTC room: ", data.room_name)
+
+# Listen for participant changes
+var notify_id = IEOS.rtc_interface_add_notify_participant_status_changed({
+    "local_user_id": product_user_id,
+    "room_name": room_name
+})
+IEOS.rtc_interface_participant_status_changed.connect(_on_participant_changed)
+
+func _on_participant_changed(data: Dictionary):
+    print("Participant ", data.participant_id, " status: ", data.participant_status)
+```
+
+## See Also
+
+- [Lobby Interface](/reference/lobby-interface) - RTC room integration with lobbies
+- RTC Admin Interface - Server-side RTC management
+- RTC Audio Interface - Audio device management

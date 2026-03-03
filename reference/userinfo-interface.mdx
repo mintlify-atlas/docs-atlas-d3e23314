@@ -1,0 +1,227 @@
+---
+title: UserInfo Interface
+description: API reference for the EOS UserInfo Interface in Godot
+---
+
+The UserInfo Interface retrieves user profile information including display names and external account data.
+
+## Overview
+
+The UserInfo Interface provides:
+
+- Querying user display names
+- Retrieving external account information
+- Getting best display names for users
+- Platform-specific display name handling
+
+All methods are called on the `IEOS` singleton instance and use Epic Account IDs.
+
+## Methods
+
+### user_info_interface_query_user_info
+
+```gdscript
+IEOS.user_info_interface_query_user_info(options: RefCounted) -> void
+```
+
+Queries user information from the backend.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID making the request
+  - `target_user_id` - Epic Account ID to query
+  - `client_data` - Optional user data
+
+**Callback Signal:** `user_info_interface_query_user_info_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `target_user_id` - Epic Account ID
+
+### user_info_interface_query_user_info_by_display_name
+
+```gdscript
+IEOS.user_info_interface_query_user_info_by_display_name(options: RefCounted) -> void
+```
+
+Queries user information by display name.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `display_name` - Display name to search
+  - `client_data` - Optional user data
+
+**Callback Signal:** `user_info_interface_query_user_info_by_display_name_callback`
+
+### user_info_interface_query_user_info_by_external_account
+
+```gdscript
+IEOS.user_info_interface_query_user_info_by_external_account(options: RefCounted) -> void
+```
+
+Queries user information by external account.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `external_account_id` - External account ID
+  - `account_type` - EOS_EExternalAccountType
+  - `client_data` - Optional user data
+
+**Callback Signal:** `user_info_interface_query_user_info_by_external_account_callback`
+
+### user_info_interface_copy_user_info
+
+```gdscript
+IEOS.user_info_interface_copy_user_info(options: RefCounted) -> Dictionary
+```
+
+Copies cached user information.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID to retrieve
+
+**Returns:** Dictionary with `result_code` and `user_info`
+
+### user_info_interface_get_external_user_info_count
+
+```gdscript
+IEOS.user_info_interface_get_external_user_info_count(options: RefCounted) -> int
+```
+
+Gets the count of cached external user accounts.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+
+**Returns:** Number of external accounts
+
+### user_info_interface_copy_external_user_info_by_index
+
+```gdscript
+IEOS.user_info_interface_copy_external_user_info_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies external user info by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+  - `index` - External account index
+
+**Returns:** Dictionary with `result_code` and `external_user_info`
+
+### user_info_interface_copy_external_user_info_by_account_type
+
+```gdscript
+IEOS.user_info_interface_copy_external_user_info_by_account_type(options: RefCounted) -> Dictionary
+```
+
+Copies external user info by account type.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+  - `account_type` - EOS_EExternalAccountType
+
+**Returns:** Dictionary with `result_code` and `external_user_info`
+
+### user_info_interface_copy_external_user_info_by_account_id
+
+```gdscript
+IEOS.user_info_interface_copy_external_user_info_by_account_id(options: RefCounted) -> Dictionary
+```
+
+Copies external user info by account ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+  - `account_id` - External account ID
+
+**Returns:** Dictionary with `result_code` and `external_user_info`
+
+### user_info_interface_copy_best_display_name
+
+```gdscript
+IEOS.user_info_interface_copy_best_display_name(options: RefCounted) -> Dictionary
+```
+
+Copies the best available display name for a user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+
+**Returns:** Dictionary with `result_code` and `best_display_name`
+
+### user_info_interface_copy_best_display_name_with_platform
+
+```gdscript
+IEOS.user_info_interface_copy_best_display_name_with_platform(options: RefCounted) -> Dictionary
+```
+
+Copies the best display name considering platform preference.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID
+  - `target_platform_type` - EOS_OnlinePlatformType
+
+**Returns:** Dictionary with `result_code` and `best_display_name`
+
+### user_info_interface_get_local_platform_type
+
+```gdscript
+IEOS.user_info_interface_get_local_platform_type(options: RefCounted) -> int
+```
+
+Gets the local platform type.
+
+**Returns:** EOS_OnlinePlatformType
+
+## Example Usage
+
+```gdscript
+# Query user info
+var query_options = {
+    "local_user_id": epic_account_id,
+    "target_user_id": friend_epic_id
+}
+
+IEOS.user_info_interface_query_user_info_callback.connect(_on_user_info_queried)
+IEOS.user_info_interface_query_user_info(query_options)
+
+func _on_user_info_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var user_info = IEOS.user_info_interface_copy_user_info({
+            "local_user_id": epic_account_id,
+            "target_user_id": friend_epic_id
+        })
+        print("User info: ", user_info.user_info)
+
+# Get best display name
+var display_name = IEOS.user_info_interface_copy_best_display_name({
+    "local_user_id": epic_account_id,
+    "target_user_id": friend_epic_id
+})
+
+if display_name.result_code == EOS_EResult.EOS_Success:
+    print("Display name: ", display_name.best_display_name)
+```
+
+## See Also
+
+- [Friends Interface](/reference/friends-interface) - Friends list management
+- [Presence Interface](/reference/presence-interface) - User presence and status

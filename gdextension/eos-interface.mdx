@@ -1,0 +1,384 @@
+---
+title: EOS Namespace and Classes
+description: GDScript wrapper classes for Epic Online Services SDK
+---
+
+The EOS namespace provides GDScript wrapper classes that make the Epic Online Services SDK more accessible and type-safe in Godot. Located in `eos.gd`, it wraps the low-level IEOS interface with idiomatic GDScript classes.
+
+## Core Class
+
+### EOS
+
+The main EOS class provides static utility methods and access to all service interfaces.
+
+#### Static Methods
+
+<ParamField path="get_instance()" type="IEOS">
+  Returns the IEOS singleton instance for direct low-level access.
+</ParamField>
+
+<ParamField path="print_result(result)" type="void">
+  Pretty prints a result code with its string representation.
+  
+  **Parameters:**
+  - `result`: A result code (int) or Dictionary with `result_code` key
+</ParamField>
+
+<ParamField path="result_str(result)" type="String">
+  Returns the string representation of a result code.
+  
+  **Parameters:**
+  - `result`: A result code (int) or Dictionary with `result_code` key
+</ParamField>
+
+<ParamField path="is_operation_complete(result)" type="bool">
+  Returns whether an operation has completed (successfully or with failure).
+  
+  **Parameters:**
+  - `result`: A result code (int) or Dictionary with `result_code` key
+</ParamField>
+
+<ParamField path="is_success(result)" type="bool">
+  Returns whether an operation was successful.
+  
+  **Parameters:**
+  - `result`: A result code (int) or Dictionary with `result_code` key, or a bool
+</ParamField>
+
+## Interface Structure
+
+Each EOS service is organized into a nested class hierarchy:
+
+```gdscript
+class ServiceName:
+    # Option classes for configuring function calls
+    class SomeOptions extends BaseClass:
+        var parameter_name: Type
+    
+    # Interface class with static methods
+    class ServiceNameInterface:
+        static func some_function(options: SomeOptions) -> ReturnType:
+            return IEOS.service_name_interface_some_function(options)
+```
+
+## Example Usage
+
+### Authentication
+
+```gdscript
+# Connect to callback signal
+IEOS.connect("auth_interface_login_callback", _on_login_callback)
+
+# Create login options
+var login_options = EOS.Auth.LoginOptions.new()
+login_options.credentials = EOS.Auth.Credentials.new()
+login_options.credentials.type = EOS.Auth.LoginCredentialType.Developer
+login_options.credentials.id = "localhost:7777"
+login_options.credentials.token = "MyUserName"
+
+# Perform login
+EOS.Auth.AuthInterface.login(login_options)
+
+func _on_login_callback(data: Dictionary):
+    if EOS.is_success(data):
+        print("Logged in as: ", data.local_user_id)
+    else:
+        print("Login failed: ", EOS.result_str(data))
+```
+
+### Creating a Lobby
+
+```gdscript
+# Connect to callback
+IEOS.connect("lobby_interface_create_lobby_callback", _on_lobby_created)
+
+# Create lobby options
+var options = EOS.Lobby.CreateLobbyOptions.new()
+options.max_lobby_members = 4
+options.permission_level = EOS.Lobby.LobbyPermissionLevel.PublicAdvertised
+options.bucket_id = "my_game_mode"
+options.enable_rtc_room = true
+
+# Create lobby
+EOS.Lobby.LobbyInterface.create_lobby(options)
+
+func _on_lobby_created(data: Dictionary):
+    if EOS.is_success(data):
+        print("Lobby created: ", data.lobby_id)
+    else:
+        print("Failed to create lobby: ", EOS.result_str(data))
+```
+
+### Querying Stats
+
+```gdscript
+# Connect to callback
+IEOS.connect("stats_interface_query_stats_callback", _on_stats_queried)
+
+# Query stats
+var options = EOS.Stats.QueryStatsOptions.new()
+options.target_user_id = EOSGRuntime.local_product_user_id
+options.stat_names = ["kills", "deaths", "wins"]
+
+EOS.Stats.StatsInterface.query_stats(options)
+
+func _on_stats_queried(data: Dictionary):
+    if EOS.is_success(data):
+        # Copy stats after query succeeds
+        var count_options = EOS.Stats.GetStatsCountOptions.new()
+        var count = EOS.Stats.StatsInterface.get_stats_count(count_options)
+        
+        for i in range(count):
+            var copy_options = EOS.Stats.CopyStatByIndexOptions.new()
+            copy_options.stat_index = i
+            var stat = EOS.Stats.StatsInterface.copy_stat_by_index(copy_options)
+            if EOS.is_success(stat):
+                print(stat.name, ": ", stat.value)
+```
+
+## Service Interfaces
+
+### Platform
+
+Manages EOS platform initialization and lifecycle.
+
+**Key Methods:**
+- `initialize(options)`: Initialize the EOS SDK
+- `create(options)`: Create platform instance
+- `release()`: Release platform resources
+- `shutdown()`: Shutdown the SDK
+
+**Key Classes:**
+- `InitializeOptions`: SDK initialization configuration
+- `CreateOptions`: Platform instance configuration
+- `PlatformFlags`: Enum for platform behavior flags
+
+### Auth
+
+Handles Epic Account authentication.
+
+**Key Methods:**
+- `login(options)`: Login with Epic Account
+- `logout(options)`: Logout current user
+- `delete_persistent_auth(options)`: Delete cached credentials
+- `link_account(options)`: Link external account
+
+**Key Classes:**
+- `LoginOptions`: Login configuration
+- `Credentials`: Login credentials
+- `LoginCredentialType`: Enum for credential types
+
+### Connect
+
+Manages Product User authentication and device IDs.
+
+**Key Methods:**
+- `login(options)`: Login with external credentials
+- `create_user(options)`: Create new product user
+- `create_device_id(options)`: Create device ID
+- `link_account(options)`: Link external account
+
+**Key Classes:**
+- `LoginOptions`: Login configuration
+- `Credentials`: External credentials
+- `UserLoginInfo`: User display information
+
+### Achievements
+
+Manages achievement definitions and player progress.
+
+**Key Methods:**
+- `query_definitions(options)`: Fetch achievement definitions
+- `query_player_achievements(options)`: Fetch player progress
+- `unlock_achievements(options)`: Unlock achievements
+- `copy_achievement_definition_v2_by_achievement_id(options)`: Get specific achievement
+
+**Key Classes:**
+- `QueryDefinitionsOptions`: Achievement query configuration
+- `UnlockAchievementsOptions`: Achievement unlock configuration
+
+### Stats
+
+Manages player statistics.
+
+**Key Methods:**
+- `query_stats(options)`: Fetch player stats
+- `ingest_stat(options)`: Update player stats
+- `copy_stat_by_name(options)`: Get specific stat
+
+**Key Classes:**
+- `QueryStatsOptions`: Stats query configuration
+- `IngestStatOptions`: Stats update configuration
+
+### Leaderboards
+
+Manages leaderboard queries and rankings.
+
+**Key Methods:**
+- `query_leaderboard_definitions(options)`: Fetch leaderboard definitions
+- `query_leaderboard_ranks(options)`: Fetch leaderboard entries
+- `query_leaderboard_user_scores(options)`: Fetch user scores
+
+**Key Classes:**
+- `QueryLeaderboardRanksOptions`: Leaderboard query configuration
+- `LeaderboardAggregation`: Enum for score aggregation types
+
+### Friends
+
+Manages friends list and friend invites.
+
+**Key Methods:**
+- `query_friends(options)`: Fetch friends list
+- `send_invite(options)`: Send friend invite
+- `accept_invite(options)`: Accept friend invite
+- `get_status(options)`: Get friendship status
+
+**Key Classes:**
+- `QueryFriendsOptions`: Friends query configuration
+- `FriendsStatus`: Enum for friendship states
+
+### Lobby
+
+Manages game lobbies and lobby search.
+
+**Key Methods:**
+- `create_lobby(options)`: Create a new lobby
+- `join_lobby(options)`: Join an existing lobby
+- `update_lobby(options)`: Update lobby settings
+- `create_lobby_search(options)`: Create lobby search
+
+**Key Classes:**
+- `CreateLobbyOptions`: Lobby creation configuration
+- `LobbyPermissionLevel`: Enum for lobby privacy settings
+- `LobbyMemberStatus`: Enum for member states
+
+### Ecom
+
+Manages in-game store, entitlements, and purchases.
+
+**Key Methods:**
+- `query_offers(options)`: Fetch available offers
+- `query_entitlements(options)`: Fetch player entitlements
+- `checkout(options)`: Initiate purchase flow
+- `redeem_entitlements(options)`: Redeem consumable entitlements
+
+**Key Classes:**
+- `QueryOffersOptions`: Store query configuration
+- `CheckoutOptions`: Purchase configuration
+- `ItemType`: Enum for entitlement types
+
+### P2P
+
+Manages peer-to-peer networking.
+
+**Key Methods:**
+- `query_nat_type()`: Query NAT type
+- `get_nat_type()`: Get cached NAT type
+- `set_relay_control(control)`: Configure relay usage
+- `get_packet_queue_info()`: Get packet queue statistics
+
+**Special Note:** Most P2P functionality is used internally by `EOSGMultiplayerPeer` and not exposed to GDScript.
+
+### RTC (Real-Time Communication)
+
+Manages voice and data communication.
+
+**Subinterfaces:**
+- **RTCAudio**: Voice communication
+- **RTCData**: Data channels
+
+**Key Methods:**
+- `join_room(options)`: Join RTC room
+- `leave_room(options)`: Leave RTC room
+- `block_participant(options)`: Block a participant
+
+### PlayerDataStorage
+
+Manages cloud storage for player data.
+
+**Key Methods:**
+- `query_file_list(options)`: List player files
+- `read_file(options)`: Download player file
+- `write_file(options)`: Upload player file
+- `delete_file(options)`: Delete player file
+
+### TitleStorage
+
+Manages cloud storage for game data.
+
+**Key Methods:**
+- `query_file_list(options)`: List title files
+- `read_file(options)`: Download title file
+- `query_file(options)`: Get file metadata
+
+### UserInfo
+
+Manages user profile information.
+
+**Key Methods:**
+- `query_user_info(options)`: Fetch user profile
+- `copy_user_info(options)`: Get cached user info
+- `copy_best_display_name(options)`: Get user display name
+
+### UI
+
+Manages EOS overlay and social UI.
+
+**Key Methods:**
+- `show_friends(options)`: Show friends overlay
+- `hide_friends(options)`: Hide friends overlay
+- `show_native_profile(options)`: Show user profile
+
+## BaseClass Pattern
+
+All option classes extend `BaseClass`, which provides:
+
+- Automatic type name assignment for EOS SDK compatibility
+- Common initialization pattern
+- Type safety for function parameters
+
+```gdscript
+class MyOptions extends BaseClass:
+    func _init():
+        super._init("MyOptions")  # Sets internal type name
+    
+    var my_parameter: String
+    var optional_parameter = null  # Optional parameters use null default
+```
+
+## Enums and Constants
+
+Each service defines relevant enums:
+
+```gdscript
+# Auth login types
+EOS.Auth.LoginCredentialType.Developer
+EOS.Auth.LoginCredentialType.ExchangeCode
+EOS.Auth.LoginCredentialType.PersistentAuth
+
+# Lobby permission levels
+EOS.Lobby.LobbyPermissionLevel.PublicAdvertised
+EOS.Lobby.LobbyPermissionLevel.JoinViaPresence
+EOS.Lobby.LobbyPermissionLevel.InviteOnly
+
+# Friend status
+EOS.Friends.FriendsStatus.NotFriends
+EOS.Friends.FriendsStatus.Friends
+```
+
+## Runtime Variables
+
+The `EOSGRuntime` autoload stores commonly used IDs:
+
+```gdscript
+EOSGRuntime.local_epic_account_id  # Current Epic Account ID
+EOSGRuntime.local_product_user_id  # Current Product User ID
+```
+
+These are automatically used as defaults in many option classes.
+
+## Next Steps
+
+- Learn about the [IEOS Interface](/gdextension/ieos-interface) for direct SDK access
+- Explore the [High Level API](/customize/high-level-api/overview) for simpler interfaces
+- Check the [EOS SDK documentation](https://dev.epicgames.com/docs/epic-online-services) for detailed service information

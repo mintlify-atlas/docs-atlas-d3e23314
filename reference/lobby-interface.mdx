@@ -1,0 +1,317 @@
+---
+title: Lobby Interface
+description: API reference for the EOS Lobby Interface in Godot
+---
+
+The Lobby Interface manages multiplayer lobbies for matchmaking and session management.
+
+## Overview
+
+The Lobby Interface provides:
+
+- Lobby creation and management
+- Lobby search and discovery
+- Member management (kick, promote, mute)
+- Lobby invites
+- RTC (Real-Time Communication) room integration
+- Lobby attributes and metadata
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### lobby_interface_create_lobby
+
+```gdscript
+IEOS.lobby_interface_create_lobby(options: RefCounted) -> void
+```
+
+Creates a new lobby.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `max_lobby_members` - Maximum number of members
+  - `permission_level` - EOS_ELobbyPermissionLevel
+  - `presence_enabled` - Boolean for presence
+  - `allow_invites` - Boolean
+  - `bucket_id` - Bucket ID string
+  - `disable_host_migration` - Boolean
+  - `enable_rtc_room` - Boolean for voice chat
+  - `rtc_room_join_action_type` - EOS_ELobbyRTCRoomJoinActionType
+  - `local_rtc_options` - Optional RTC options
+  - `lobby_id` - Optional custom lobby ID
+  - `enable_join_by_id` - Boolean
+  - `rejoin_after_kick_requires_invite` - Boolean
+  - `allowed_platform_ids` - Optional array of platform IDs
+  - `client_data` - Optional user data
+
+**Callback Signal:** `lobby_interface_create_lobby_callback`
+
+### lobby_interface_destroy_lobby
+
+```gdscript
+IEOS.lobby_interface_destroy_lobby(options: RefCounted) -> void
+```
+
+Destroys a lobby owned by the local user.
+
+**Callback Signal:** `lobby_interface_destroy_lobby_callback`
+
+### lobby_interface_join_lobby
+
+```gdscript
+IEOS.lobby_interface_join_lobby(options: RefCounted) -> void
+```
+
+Joins an existing lobby using lobby details.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `lobby_details` - EOSGLobbyDetails object
+  - `local_user_id` - Product User ID
+  - `presence_enabled` - Boolean
+  - `rtc_room_join_action_type` - EOS_ELobbyRTCRoomJoinActionType
+  - `local_rtc_options` - Optional RTC options
+  - `client_data` - Optional user data
+
+**Callback Signal:** `lobby_interface_join_lobby_callback`
+
+### lobby_interface_join_lobby_by_id
+
+```gdscript
+IEOS.lobby_interface_join_lobby_by_id(options: RefCounted) -> void
+```
+
+Joins a lobby by its lobby ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `lobby_id` - Lobby ID string
+  - `local_user_id` - Product User ID
+  - `presence_enabled` - Boolean
+  - Additional parameters similar to join_lobby
+
+**Callback Signal:** `lobby_interface_join_lobby_by_id_callback`
+
+### lobby_interface_leave_lobby
+
+```gdscript
+IEOS.lobby_interface_leave_lobby(options: RefCounted) -> void
+```
+
+Leaves a lobby.
+
+**Callback Signal:** `lobby_interface_leave_lobby_callback`
+
+### lobby_interface_update_lobby_modification
+
+```gdscript
+IEOS.lobby_interface_update_lobby_modification(options: RefCounted) -> Dictionary
+```
+
+Creates a lobby modification handle for updating lobby properties.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `lobby_id` - Lobby ID string
+
+**Returns:** Dictionary with `result_code` and `lobby_modification` (EOSGLobbyModification)
+
+### lobby_interface_update_lobby
+
+```gdscript
+IEOS.lobby_interface_update_lobby(options: RefCounted) -> void
+```
+
+Applies lobby modifications.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `lobby_modification` - EOSGLobbyModification object
+  - `client_data` - Optional user data
+
+**Callback Signal:** `lobby_interface_update_lobby_callback`
+
+### lobby_interface_create_lobby_search
+
+```gdscript
+IEOS.lobby_interface_create_lobby_search(options: RefCounted) -> Dictionary
+```
+
+Creates a lobby search handle.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `max_results` - Maximum search results
+
+**Returns:** Dictionary with `result_code` and `lobby_search` (EOSGLobbySearch)
+
+### lobby_interface_send_invite
+
+```gdscript
+IEOS.lobby_interface_send_invite(options: RefCounted) -> void
+```
+
+Sends a lobby invite to a user.
+
+**Callback Signal:** `lobby_interface_send_invite_callback`
+
+### lobby_interface_reject_invite
+
+```gdscript
+IEOS.lobby_interface_reject_invite(options: RefCounted) -> void
+```
+
+Rejects a lobby invite.
+
+**Callback Signal:** `lobby_interface_reject_invite_callback`
+
+### lobby_interface_query_invites
+
+```gdscript
+IEOS.lobby_interface_query_invites(options: RefCounted) -> void
+```
+
+Queries pending lobby invites.
+
+**Callback Signal:** `lobby_interface_query_invites_callback`
+
+### lobby_interface_get_invite_count
+
+```gdscript
+IEOS.lobby_interface_get_invite_count(options: RefCounted) -> int
+```
+
+Returns the number of cached invites.
+
+**Returns:** Number of invites
+
+### lobby_interface_promote_member
+
+```gdscript
+IEOS.lobby_interface_promote_member(options: RefCounted) -> void
+```
+
+Promotes a lobby member to owner.
+
+**Callback Signal:** `lobby_interface_promote_member_callback`
+
+### lobby_interface_kick_member
+
+```gdscript
+IEOS.lobby_interface_kick_member(options: RefCounted) -> void
+```
+
+Kicks a member from the lobby.
+
+**Callback Signal:** `lobby_interface_kick_member_callback`
+
+### lobby_interface_hard_mute_member
+
+```gdscript
+IEOS.lobby_interface_hard_mute_member(options: RefCounted) -> void
+```
+
+Mutes a member in the lobby's RTC room.
+
+**Callback Signal:** `lobby_interface_hard_mute_member_callback`
+
+### lobby_interface_join_rtc_room
+
+```gdscript
+IEOS.lobby_interface_join_rtc_room(options: RefCounted) -> void
+```
+
+Joins the lobby's RTC room for voice chat.
+
+**Callback Signal:** `lobby_interface_join_rtc_room_callback`
+
+### lobby_interface_leave_rtc_room
+
+```gdscript
+IEOS.lobby_interface_leave_rtc_room(options: RefCounted) -> void
+```
+
+Leaves the lobby's RTC room.
+
+**Callback Signal:** `lobby_interface_leave_rtc_room_callback`
+
+### lobby_interface_copy_lobby_details
+
+```gdscript
+IEOS.lobby_interface_copy_lobby_details(options: RefCounted) -> Dictionary
+```
+
+Copies lobby details handle.
+
+**Returns:** Dictionary with `result_code` and `lobby_details`
+
+### lobby_interface_get_rtc_room_name
+
+```gdscript
+IEOS.lobby_interface_get_rtc_room_name(options: RefCounted) -> Dictionary
+```
+
+Gets the RTC room name for a lobby.
+
+**Returns:** Dictionary with `result_code` and `rtc_room_name`
+
+### lobby_interface_is_rtc_room_connected
+
+```gdscript
+IEOS.lobby_interface_is_rtc_room_connected(options: RefCounted) -> Dictionary
+```
+
+Checks if connected to the lobby's RTC room.
+
+**Returns:** Dictionary with `result_code` and `is_connected`
+
+### lobby_interface_get_connect_string
+
+```gdscript
+IEOS.lobby_interface_get_connect_string(options: RefCounted) -> Dictionary
+```
+
+Generates a connect string for the lobby.
+
+**Returns:** Dictionary with `result_code` and `connect_string`
+
+### lobby_interface_parse_connect_string
+
+```gdscript
+IEOS.lobby_interface_parse_connect_string(options: RefCounted) -> Dictionary
+```
+
+Parses a lobby connect string to extract the lobby ID.
+
+**Returns:** Dictionary with `result_code` and `lobby_id`
+
+## Example Usage
+
+```gdscript
+# Create a lobby
+var create_options = {
+    "local_user_id": product_user_id,
+    "max_lobby_members": 4,
+    "permission_level": EOS_ELobbyPermissionLevel.EOS_LPL_PUBLICADVERTISED,
+    "presence_enabled": true,
+    "allow_invites": true,
+    "bucket_id": "MyGame:Region1",
+    "enable_rtc_room": true,
+    "rtc_room_join_action_type": 0
+}
+
+IEOS.lobby_interface_create_lobby_callback.connect(_on_lobby_created)
+IEOS.lobby_interface_create_lobby(create_options)
+
+func _on_lobby_created(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Lobby created: ", data.lobby_id)
+```
+
+## See Also
+
+- [Sessions Interface](/reference/sessions-interface) - Alternative session management
+- [RTC Interface](/reference/rtc-interface) - Voice chat

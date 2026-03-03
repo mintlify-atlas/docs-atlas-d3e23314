@@ -1,0 +1,117 @@
+---
+title: Metrics Interface
+description: API reference for the EOS Metrics Interface in Godot
+---
+
+The Metrics Interface tracks player session metrics for analytics and reporting.
+
+## Overview
+
+The Metrics Interface allows:
+
+- Tracking player session starts and ends
+- Recording controller type usage
+- Associating sessions with server and game session IDs
+
+Metrics are automatically sent to Epic for analytics.
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### metrics_interface_begin_player_session
+
+```gdscript
+IEOS.metrics_interface_begin_player_session(options: RefCounted) -> int
+```
+
+Begins a player session for metrics tracking.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `account_id_type` - EOS_EMetricsAccountIdType
+  - `account_id` - Account ID (Epic Account ID or external)
+  - `display_name` - Player display name
+  - `controller_type` - EOS_EUserControllerType
+  - `server_ip` - Server IP address (optional)
+  - `game_session_id` - Game session identifier (optional)
+
+**Returns:** EOS_EResult
+
+### metrics_interface_end_player_session
+
+```gdscript
+IEOS.metrics_interface_end_player_session(options: RefCounted) -> int
+```
+
+Ends a player session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `account_id_type` - EOS_EMetricsAccountIdType
+  - `account_id` - Account ID (Epic Account ID or external)
+
+**Returns:** EOS_EResult
+
+## Account ID Types
+
+The `account_id_type` parameter specifies how the account ID should be interpreted:
+
+- `EOS_MAIT_Epic` - Epic Account ID
+- `EOS_MAIT_External` - External account ID (string)
+
+## Controller Types
+
+The `controller_type` parameter indicates the input method:
+
+- `EOS_UCT_Unknown` - Unknown controller type
+- `EOS_UCT_MouseKeyboard` - Mouse and keyboard
+- `EOS_UCT_GamepadControl` - Game controller/gamepad
+- `EOS_UCT_TouchControl` - Touch screen
+
+## Example Usage
+
+```gdscript
+# Begin player session with Epic Account
+var begin_options = {
+    "account_id_type": EOS_EMetricsAccountIdType.EOS_MAIT_Epic,
+    "account_id": epic_account_id,
+    "display_name": "PlayerName",
+    "controller_type": EOS_EUserControllerType.EOS_UCT_MouseKeyboard,
+    "server_ip": "192.168.1.100",
+    "game_session_id": "match_12345"
+}
+
+var result = IEOS.metrics_interface_begin_player_session(begin_options)
+if result == EOS_EResult.EOS_Success:
+    print("Player session started")
+
+# End player session when player disconnects
+var end_options = {
+    "account_id_type": EOS_EMetricsAccountIdType.EOS_MAIT_Epic,
+    "account_id": epic_account_id
+}
+
+IEOS.metrics_interface_end_player_session(end_options)
+
+# Using external account ID
+var external_begin = {
+    "account_id_type": EOS_EMetricsAccountIdType.EOS_MAIT_External,
+    "account_id": "steam_12345678",
+    "display_name": "SteamPlayer",
+    "controller_type": EOS_EUserControllerType.EOS_UCT_GamepadControl
+}
+
+IEOS.metrics_interface_begin_player_session(external_begin)
+```
+
+## Notes
+
+- Always call `end_player_session` when a player disconnects to ensure accurate session tracking
+- Session metrics are used for analytics in the Developer Portal
+- The metrics interface does not require authentication, making it suitable for tracking sessions before login
+
+## See Also
+
+- [Auth Interface](/reference/auth-interface) - Epic Account authentication
+- [Connect Interface](/reference/connect-interface) - Product User ID authentication

@@ -1,0 +1,242 @@
+---
+title: HP2P
+description: Configure peer-to-peer networking settings
+---
+
+## Overview
+
+HP2P provides methods to configure and query peer-to-peer networking settings including NAT type, relay control, port ranges, and packet queue information.
+
+## Methods
+
+### get_nat_type_async
+
+```gdscript
+func get_nat_type_async() -> EOS.P2P.NATType
+```
+
+Returns the current user's NAT type.
+
+**Returns:** EOS.P2P.NATType enum value
+
+**Example:**
+```gdscript
+var nat_type = await HP2P.get_nat_type_async()
+print("NAT Type: ", EOS.P2P.NATType.find_key(nat_type))
+```
+
+Source: [hp2p.gd:21](https://github.com/YOUR_REPO/hp2p.gd#L21)
+
+### get_relay_control
+
+```gdscript
+func get_relay_control() -> EOS.P2P.RelayControl
+```
+
+Get the current relay control setting.
+
+**Returns:** EOS.P2P.RelayControl enum value
+
+**Example:**
+```gdscript
+var relay_control = HP2P.get_relay_control()
+print("Relay Control: ", EOS.P2P.RelayControl.find_key(relay_control))
+```
+
+Source: [hp2p.gd:35](https://github.com/YOUR_REPO/hp2p.gd#L35)
+
+### set_relay_control
+
+```gdscript
+func set_relay_control(relay_control: EOS.P2P.RelayControl) -> EOS.Result
+```
+
+Set how relay servers are to be used.
+
+**Parameters:**
+- `relay_control`: EOS.P2P.RelayControl enum value
+  - `NoRelays` - Never use relay servers
+  - `AllowRelays` - Allow relay servers
+  - `ForceRelays` - Always use relay servers
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+# Allow relay servers when direct connection fails
+var result = HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)
+```
+
+Source: [hp2p.gd:44](https://github.com/YOUR_REPO/hp2p.gd#L44)
+
+### get_port_range
+
+```gdscript
+func get_port_range() -> Dictionary
+```
+
+Get the current chosen port and the amount of other ports to try above the chosen port if the chosen port is unavailable.
+
+**Returns:** Dictionary with the following keys:
+- `result_code: EOS.Result`
+- `port: int`
+- `max_additional_ports_to_try: int`
+
+**Example:**
+```gdscript
+var port_info = HP2P.get_port_range()
+if EOS.is_success(port_info.result_code):
+    print("Port: ", port_info.port)
+    print("Additional ports: ", port_info.max_additional_ports_to_try)
+```
+
+Source: [hp2p.gd:53](https://github.com/YOUR_REPO/hp2p.gd#L53)
+
+### set_port_range
+
+```gdscript
+func set_port_range(port: int, max_additional_ports_to_try: int) -> EOS.Result
+```
+
+Set configuration options related to network ports.
+
+**Parameters:**
+- `port`: The port to use
+- `max_additional_ports_to_try`: Number of additional ports to try if the chosen port is unavailable
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+# Use port 7777, and try up to 10 additional ports if needed
+var result = HP2P.set_port_range(7777, 10)
+if EOS.is_success(result):
+    print("Port range set successfully")
+```
+
+Source: [hp2p.gd:58](https://github.com/YOUR_REPO/hp2p.gd#L58)
+
+### get_packet_queue_info
+
+```gdscript
+func get_packet_queue_info() -> Dictionary
+```
+
+Gets the current cached information related to the incoming and outgoing packet queues.
+
+**Returns:** Dictionary with the following keys:
+- `result_code: EOS.Result`
+- `incoming_packet_queue_current_packet_count: int`
+- `incoming_packet_queue_current_size_bytes: int`
+- `incoming_packet_queue_max_size_bytes: int`
+- `outgoing_packet_queue_current_packet_count: int`
+- `outgoing_packet_queue_current_size_bytes: int`
+- `outgoing_packet_queue_max_size_bytes: int`
+
+**Example:**
+```gdscript
+var queue_info = HP2P.get_packet_queue_info()
+if EOS.is_success(queue_info.result_code):
+    print("Incoming packets: ", queue_info.incoming_packet_queue_current_packet_count)
+    print("Outgoing packets: ", queue_info.outgoing_packet_queue_current_packet_count)
+```
+
+Source: [hp2p.gd:74](https://github.com/YOUR_REPO/hp2p.gd#L74)
+
+### set_packet_queue_size
+
+```gdscript
+func set_packet_queue_size(incoming_packet_queue_max_size_bytes: int, outgoing_packet_queue_max_size_bytes: int) -> EOS.Result
+```
+
+Sets the maximum packet queue sizes that packets waiting to be sent or received can use.
+
+**Parameters:**
+- `incoming_packet_queue_max_size_bytes`: Maximum size for incoming packet queue in bytes
+- `outgoing_packet_queue_max_size_bytes`: Maximum size for outgoing packet queue in bytes
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+# Set both queues to 1MB max
+var result = HP2P.set_packet_queue_size(1024 * 1024, 1024 * 1024)
+```
+
+Source: [hp2p.gd:79](https://github.com/YOUR_REPO/hp2p.gd#L79)
+
+## Usage Example
+
+```gdscript
+extends Node
+
+func _ready():
+    await configure_p2p()
+
+func configure_p2p():
+    # Check NAT type
+    var nat_type = await HP2P.get_nat_type_async()
+    print("NAT Type: ", EOS.P2P.NATType.find_key(nat_type))
+    
+    # Configure relay servers based on NAT type
+    match nat_type:
+        EOS.P2P.NATType.Moderate, EOS.P2P.NATType.Strict:
+            # Use relays for difficult NAT types
+            HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)
+            print("Relay servers enabled")
+        _:
+            # No relays for open NAT
+            HP2P.set_relay_control(EOS.P2P.RelayControl.NoRelays)
+            print("Direct connections only")
+    
+    # Configure port range
+    var result = HP2P.set_port_range(7777, 10)
+    if EOS.is_success(result):
+        print("Port range configured: 7777-7787")
+    
+    # Set packet queue sizes (1MB each)
+    HP2P.set_packet_queue_size(1024 * 1024, 1024 * 1024)
+
+func monitor_packet_queues():
+    var queue_info = HP2P.get_packet_queue_info()
+    if EOS.is_success(queue_info.result_code):
+        var incoming_usage = float(queue_info.incoming_packet_queue_current_size_bytes) / queue_info.incoming_packet_queue_max_size_bytes
+        var outgoing_usage = float(queue_info.outgoing_packet_queue_current_size_bytes) / queue_info.outgoing_packet_queue_max_size_bytes
+        
+        print("Incoming queue: %.1f%% full" % (incoming_usage * 100))
+        print("Outgoing queue: %.1f%% full" % (outgoing_usage * 100))
+        
+        if incoming_usage > 0.8 or outgoing_usage > 0.8:
+            push_warning("Packet queues nearly full!")
+```
+
+## NAT Types
+
+The NAT type affects connection quality:
+
+- `Unknown` - NAT type is unknown
+- `Open` - Can connect to all NAT types
+- `Moderate` - Can connect to Open and Moderate
+- `Strict` - Can only connect to Open
+
+## Relay Control Options
+
+- `NoRelays` - Never use relay servers (best performance, may fail with strict NAT)
+- `AllowRelays` - Use relay servers as fallback (recommended)
+- `ForceRelays` - Always use relay servers (guaranteed connectivity, higher latency)
+
+## Best Practices
+
+1. **Check NAT type**: Query NAT type at startup to determine relay strategy
+2. **Allow relays**: Use `AllowRelays` for best balance of performance and connectivity
+3. **Configure ports**: Set a reasonable port range to avoid conflicts
+4. **Monitor queues**: Periodically check packet queue usage to detect network issues
+5. **Adjust queue sizes**: Increase queue sizes for high-traffic games
+
+<Note>
+P2P settings should be configured before establishing any peer connections.
+</Note>
+
+<Warning>
+Using `ForceRelays` will always route traffic through Epic's relay servers, which adds latency. Only use this for testing or when direct connections are not possible.
+</Warning>

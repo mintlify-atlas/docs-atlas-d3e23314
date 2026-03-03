@@ -1,122 +1,155 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Epic Online Services Godot",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#478CBF",
+    "light": "#5FB0EF",
+    "dark": "#355A7D"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/3ddelano/epic-online-services-godot"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/3ddelano/epic-online-services-godot"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/high-level-vs-gdextension",
+              "concepts/initialization",
+              "concepts/authentication"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Platform Setup",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "platforms/windows",
+              "platforms/android",
+              "platforms/ios",
+              "platforms/linux",
+              "platforms/macos"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "High Level API",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "api/hplatform",
+              "api/hauth",
+              "api/hachievements",
+              "api/hfriends",
+              "api/hstats",
+              "api/hleaderboards",
+              "api/hlobbies",
+              "api/hp2p",
+              "api/hlog"
+            ]
+          },
+          {
+            "group": "GDExtension API",
+            "pages": [
+              "gdextension/overview",
+              "gdextension/eos-interface",
+              "gdextension/ieos-interface"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/authentication-methods",
+              "features/achievements",
+              "features/friends-social",
+              "features/stats-leaderboards",
+              "features/lobbies-sessions",
+              "features/p2p-networking",
+              "features/voice-rtc",
+              "features/player-data-storage",
+              "features/ecommerce",
+              "features/anti-cheat"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/development-setup",
+              "guides/exporting-games",
+              "guides/bootstrapping-eos",
+              "guides/multiplayer-setup",
+              "guides/social-overlay"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "High Level Classes",
             "pages": [
-              "api-reference/introduction"
+              "reference/hplatform",
+              "reference/hauth",
+              "reference/hachievements",
+              "reference/hfriends",
+              "reference/hstats",
+              "reference/hleaderboards",
+              "reference/hlobbies",
+              "reference/hp2p",
+              "reference/hsessions",
+              "reference/hlog",
+              "reference/hcredentials"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "GDExtension Interfaces",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "reference/auth-interface",
+              "reference/connect-interface",
+              "reference/achievements-interface",
+              "reference/friends-interface",
+              "reference/stats-interface",
+              "reference/leaderboards-interface",
+              "reference/lobby-interface",
+              "reference/sessions-interface",
+              "reference/p2p-interface",
+              "reference/rtc-interface",
+              "reference/ui-interface",
+              "reference/userinfo-interface",
+              "reference/presence-interface",
+              "reference/metrics-interface",
+              "reference/mods-interface",
+              "reference/ecom-interface",
+              "reference/playerdatastorage-interface",
+              "reference/titlestorage-interface",
+              "reference/anticheat-interface"
+            ]
+          },
+          {
+            "group": "Multiplayer",
+            "pages": [
+              "reference/eosg-multiplayer-peer",
+              "reference/eosg-packet-peer-mediator"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

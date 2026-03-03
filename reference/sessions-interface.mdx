@@ -1,0 +1,286 @@
+---
+title: Sessions Interface
+description: API reference for the EOS Sessions Interface in Godot
+---
+
+The Sessions Interface manages multiplayer game sessions with more advanced features than lobbies.
+
+## Overview
+
+The Sessions Interface provides:
+
+- Session creation and management
+- Session search and discovery
+- Player registration for matchmaking
+- Session invites
+- Presence integration
+- Platform crossplay controls
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### sessions_interface_create_session_modification
+
+```gdscript
+IEOS.sessions_interface_create_session_modification(options: RefCounted) -> Dictionary
+```
+
+Creates a session modification handle for a new session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_name` - Session name string
+  - `bucket_id` - Bucket ID for matchmaking
+  - `max_players` - Maximum player count
+  - `local_user_id` - Product User ID (optional)
+  - `presence_enabled` - Boolean
+  - `session_id` - Optional custom session ID
+  - `sanctions_enabled` - Boolean
+  - `allowed_platform_ids` - Optional array of platform IDs
+
+**Returns:** Dictionary with `result_code` and `session_modification`
+
+### sessions_interface_update_session_modification
+
+```gdscript
+IEOS.sessions_interface_update_session_modification(options: RefCounted) -> Dictionary
+```
+
+Creates a modification handle for an existing session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_name` - Session name string
+
+**Returns:** Dictionary with `result_code` and `session_modification`
+
+### sessions_interface_update_session
+
+```gdscript
+IEOS.sessions_interface_update_session(options: RefCounted) -> void
+```
+
+Applies session modifications.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_modification` - EOSGSessionModification object
+  - `client_data` - Optional user data
+
+**Callback Signal:** `sessions_interface_update_session_callback`
+
+### sessions_interface_destroy_session
+
+```gdscript
+IEOS.sessions_interface_destroy_session(options: RefCounted) -> void
+```
+
+Destroys a session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_name` - Session name string
+  - `client_data` - Optional user data
+
+**Callback Signal:** `sessions_interface_destroy_session_callback`
+
+### sessions_interface_join_session
+
+```gdscript
+IEOS.sessions_interface_join_session(options: RefCounted) -> void
+```
+
+Joins a session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_name` - Local session name
+  - `session_details` - EOSGSessionDetails object
+  - `local_user_id` - Product User ID
+  - `presence_enabled` - Boolean
+  - `client_data` - Optional user data
+
+**Callback Signal:** `sessions_interface_join_session_callback`
+
+### sessions_interface_start_session
+
+```gdscript
+IEOS.sessions_interface_start_session(options: RefCounted) -> void
+```
+
+Starts a session.
+
+**Callback Signal:** `sessions_interface_start_session_callback`
+
+### sessions_interface_end_session
+
+```gdscript
+IEOS.sessions_interface_end_session(options: RefCounted) -> void
+```
+
+Ends a session.
+
+**Callback Signal:** `sessions_interface_end_session_callback`
+
+### sessions_interface_register_players
+
+```gdscript
+IEOS.sessions_interface_register_players(options: RefCounted) -> void
+```
+
+Registers players in a session for matchmaking.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `session_name` - Session name string
+  - `players_to_register` - Array of Product User ID strings
+  - `client_data` - Optional user data
+
+**Callback Signal:** `sessions_interface_register_players_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `registered_players` - Array of registered Product User IDs
+- `sanctioned_players` - Array of sanctioned Product User IDs
+
+### sessions_interface_unregister_players
+
+```gdscript
+IEOS.sessions_interface_unregister_players(options: RefCounted) -> void
+```
+
+Unregisters players from a session.
+
+**Callback Signal:** `sessions_interface_unregister_players_callback`
+
+### sessions_interface_send_invite
+
+```gdscript
+IEOS.sessions_interface_send_invite(options: RefCounted) -> void
+```
+
+Sends a session invite.
+
+**Callback Signal:** `sessions_interface_send_invite_callback`
+
+### sessions_interface_reject_invite
+
+```gdscript
+IEOS.sessions_interface_reject_invite(options: RefCounted) -> void
+```
+
+Rejects a session invite.
+
+**Callback Signal:** `sessions_interface_reject_invite_callback`
+
+### sessions_interface_query_invites
+
+```gdscript
+IEOS.sessions_interface_query_invites(options: RefCounted) -> void
+```
+
+Queries pending session invites.
+
+**Callback Signal:** `sessions_interface_query_invites_callback`
+
+### sessions_interface_get_invite_count
+
+```gdscript
+IEOS.sessions_interface_get_invite_count(options: RefCounted) -> int
+```
+
+Returns the number of cached invites.
+
+**Returns:** Number of invites
+
+### sessions_interface_get_invite_id_by_index
+
+```gdscript
+IEOS.sessions_interface_get_invite_id_by_index(options: RefCounted) -> Dictionary
+```
+
+Gets an invite ID by index.
+
+**Returns:** Dictionary with `result_code` and `invite_id`
+
+### sessions_interface_create_session_search
+
+```gdscript
+IEOS.sessions_interface_create_session_search(options: RefCounted) -> Dictionary
+```
+
+Creates a session search handle.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `max_search_results` - Maximum results
+
+**Returns:** Dictionary with `result_code` and `session_search`
+
+### sessions_interface_copy_active_session_details
+
+```gdscript
+IEOS.sessions_interface_copy_active_session_details(options: RefCounted) -> Dictionary
+```
+
+Copies details for an active session.
+
+**Returns:** Dictionary with `result_code` and `active_session`
+
+### sessions_interface_copy_session_details_by_invite_id
+
+```gdscript
+IEOS.sessions_interface_copy_session_details_by_invite_id(options: RefCounted) -> Dictionary
+```
+
+Copies session details from an invite ID.
+
+**Returns:** Dictionary with `result_code` and `session_details`
+
+### sessions_interface_is_user_in_session
+
+```gdscript
+IEOS.sessions_interface_is_user_in_session(options: RefCounted) -> int
+```
+
+Checks if a user is in a session.
+
+**Returns:** EOS_EResult indicating if user is in session
+
+### sessions_interface_dump_session_state
+
+```gdscript
+IEOS.sessions_interface_dump_session_state(options: RefCounted) -> int
+```
+
+Dumps session state for debugging.
+
+**Returns:** EOS_EResult
+
+## Example Usage
+
+```gdscript
+# Create a session
+var mod_result = IEOS.sessions_interface_create_session_modification({
+    "session_name": "MySession",
+    "bucket_id": "MyGame:Region1",
+    "max_players": 8,
+    "presence_enabled": true
+})
+
+if mod_result.result_code == EOS_EResult.EOS_Success:
+    var session_mod = mod_result.session_modification
+    # Configure session attributes on session_mod...
+    
+    IEOS.sessions_interface_update_session_callback.connect(_on_session_updated)
+    IEOS.sessions_interface_update_session({"session_modification": session_mod})
+
+func _on_session_updated(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Session created: ", data.session_name)
+```
+
+## See Also
+
+- [Lobby Interface](/reference/lobby-interface) - Simpler lobby system

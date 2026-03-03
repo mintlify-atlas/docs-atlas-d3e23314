@@ -1,0 +1,224 @@
+---
+title: 'HP2P'
+description: 'Peer-to-peer networking configuration for Epic Online Services'
+---
+
+## Overview
+
+The `HP2P` class provides methods for configuring peer-to-peer networking settings. It allows you to query NAT type, manage relay control, configure port ranges, and monitor packet queues.
+
+## Methods
+
+### get_nat_type_async
+
+```gdscript
+func get_nat_type_async() -> EOS.P2P.NATType
+```
+
+Returns the current user's NAT type.
+
+<ResponseField name="return" type="EOS.P2P.NATType">
+  The NAT type of the current user's connection
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var nat_type = await HP2P.get_nat_type_async()
+print("NAT Type: ", nat_type)
+```
+
+### get_relay_control
+
+```gdscript
+func get_relay_control() -> EOS.P2P.RelayControl
+```
+
+Get the current relay control setting.
+
+<ResponseField name="return" type="EOS.P2P.RelayControl">
+  The current relay control setting
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var relay_control = HP2P.get_relay_control()
+print("Relay Control: ", relay_control)
+```
+
+### set_relay_control
+
+```gdscript
+func set_relay_control(relay_control: EOS.P2P.RelayControl) -> EOS.Result
+```
+
+Set how relay servers are to be used.
+
+<ParamField path="relay_control" type="EOS.P2P.RelayControl" required>
+  The relay control setting to apply. Options include:
+  - `EOS.P2P.RelayControl.NoRelays` - Never use relay servers
+  - `EOS.P2P.RelayControl.AllowRelays` - Use relay servers if direct connection fails
+  - `EOS.P2P.RelayControl.ForceRelays` - Always use relay servers
+</ParamField>
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from the operation
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var result = HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)
+if EOS.is_success(result):
+    print("Relay control updated")
+```
+
+### get_port_range
+
+```gdscript
+func get_port_range() -> Dictionary
+```
+
+Get the current chosen port and the amount of other ports to try above the chosen port if the chosen port is unavailable.
+
+<ResponseField name="return" type="Dictionary">
+  Returns a Dictionary with the following keys:
+  - `result_code`: EOS.Result
+  - `port`: int
+  - `max_additional_ports_to_try`: int
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var port_range = HP2P.get_port_range()
+if EOS.is_success(port_range.result_code):
+    print("Port: ", port_range.port)
+    print("Max additional ports: ", port_range.max_additional_ports_to_try)
+```
+
+### set_port_range
+
+```gdscript
+func set_port_range(port: int, max_additional_ports_to_try: int) -> EOS.Result
+```
+
+Set configuration options related to network ports.
+
+<ParamField path="port" type="int" required>
+  The preferred port to use for P2P connections
+</ParamField>
+
+<ParamField path="max_additional_ports_to_try" type="int" required>
+  Number of additional ports to try if the preferred port is unavailable
+</ParamField>
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from the operation
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var result = HP2P.set_port_range(7777, 10)
+if EOS.is_success(result):
+    print("Port range configured")
+```
+
+### get_packet_queue_info
+
+```gdscript
+func get_packet_queue_info() -> Dictionary
+```
+
+Gets the current cached information related to the incoming and outgoing packet queues.
+
+<ResponseField name="return" type="Dictionary">
+  Returns a Dictionary with the following keys:
+  - `result_code`: EOS.Result
+  - `incoming_packet_queue_current_packet_count`: int
+  - `incoming_packet_queue_current_size_bytes`: int
+  - `incoming_packet_queue_max_size_bytes`: int
+  - `outgoing_packet_queue_current_packet_count`: int
+  - `outgoing_packet_queue_current_size_bytes`: int
+  - `outgoing_packet_queue_max_size_bytes`: int
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var queue_info = HP2P.get_packet_queue_info()
+if EOS.is_success(queue_info.result_code):
+    print("Incoming packets: ", queue_info.incoming_packet_queue_current_packet_count)
+    print("Outgoing packets: ", queue_info.outgoing_packet_queue_current_packet_count)
+    print("Incoming bytes: ", queue_info.incoming_packet_queue_current_size_bytes)
+```
+
+### set_packet_queue_size
+
+```gdscript
+func set_packet_queue_size(incoming_packet_queue_max_size_bytes: int, outgoing_packet_queue_max_size_bytes: int) -> EOS.Result
+```
+
+Sets the maximum packet queue sizes that packets waiting to be sent or received can use.
+
+<ParamField path="incoming_packet_queue_max_size_bytes" type="int" required>
+  Maximum size in bytes for the incoming packet queue
+</ParamField>
+
+<ParamField path="outgoing_packet_queue_max_size_bytes" type="int" required>
+  Maximum size in bytes for the outgoing packet queue
+</ParamField>
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from the operation
+</ResponseField>
+
+**Example:**
+
+```gdscript
+# Set 1MB for incoming and outgoing queues
+var result = HP2P.set_packet_queue_size(1024 * 1024, 1024 * 1024)
+if EOS.is_success(result):
+    print("Packet queue sizes configured")
+```
+
+**Complete Usage Example:**
+
+```gdscript
+# Configure P2P networking
+func configure_p2p():
+    # Set relay control to allow relays as fallback
+    var relay_result = HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)
+    if EOS.is_success(relay_result):
+        print("Relay control configured")
+    
+    # Set port range
+    var port_result = HP2P.set_port_range(7777, 10)
+    if EOS.is_success(port_result):
+        print("Port range configured")
+    
+    # Set packet queue sizes (1MB each)
+    var queue_result = HP2P.set_packet_queue_size(1024 * 1024, 1024 * 1024)
+    if EOS.is_success(queue_result):
+        print("Packet queues configured")
+    
+    # Get NAT type
+    var nat_type = await HP2P.get_nat_type_async()
+    print("NAT Type: ", nat_type)
+
+# Monitor P2P connection quality
+func monitor_p2p():
+    var queue_info = HP2P.get_packet_queue_info()
+    if EOS.is_success(queue_info.result_code):
+        var incoming_usage = float(queue_info.incoming_packet_queue_current_size_bytes) / queue_info.incoming_packet_queue_max_size_bytes
+        var outgoing_usage = float(queue_info.outgoing_packet_queue_current_size_bytes) / queue_info.outgoing_packet_queue_max_size_bytes
+        
+        if incoming_usage > 0.8 or outgoing_usage > 0.8:
+            print("Warning: Packet queues are getting full")
+```
+
+<Note>
+  P2P settings should be configured before establishing any peer connections for optimal performance.
+</Note>

@@ -1,0 +1,565 @@
+---
+title: EOSGMultiplayerPeer
+description: API reference for EOSGMultiplayerPeer class
+---
+
+## Overview
+
+EOSGMultiplayerPeer implements Godot's `MultiplayerPeerExtension` interface using the EOS P2P Interface. It enables direct peer-to-peer connections between players over the internet with automatic NAT punchthrough and relay server fallback.
+
+**Extends:** `MultiplayerPeerExtension`
+
+**Source Files:**
+- `eosg_multiplayer_peer.h:17`
+- `eosg_multiplayer_peer.cpp:1`
+
+## Connection Modes
+
+EOSGMultiplayerPeer supports three connection modes:
+
+### Server Mode
+- Opens a socket and actively listens for incoming connection requests
+- Can accept or reject connection requests (auto-accept by default)
+- Always has peer ID `1`
+- Supports packet relaying to connected clients
+
+### Client Mode
+- Can only connect to a server instance
+- Cannot accept connection requests from others
+- Can only be connected to a single peer (the server)
+- Receives unique peer ID from server upon connection
+
+### Mesh Mode
+- Allows arbitrary connections between mesh instances
+- Can also connect to a server instance
+- All mesh instances must use the same socket ID to connect
+- Packets are NOT relayed - can only send to directly connected peers
+- Each mesh instance has a unique peer ID
+
+## Static Methods
+
+### get_local_user_id
+
+```gdscript
+static func get_local_user_id() -> String
+```
+
+Returns the currently set local user ID. Returns an empty string if not set.
+
+**Source:** `eosg_multiplayer_peer.cpp:853`
+
+## Methods
+
+### create_server
+
+```gdscript
+func create_server(socket_id: String) -> Error
+```
+
+Creates a server instance using the given socket ID.
+
+**Parameters:**
+- `socket_id` - The socket ID the server uses to listen for connection requests. Must be alphanumeric only and max 32 characters.
+
+**Returns:** `OK` on success, error code on failure
+
+**Source:** `eosg_multiplayer_peer.cpp:66`
+
+**Example:**
+```gdscript
+var peer = EOSGMultiplayerPeer.new()
+var result = peer.create_server("game_lobby_1")
+if result == OK:
+    multiplayer.multiplayer_peer = peer
+    print("Server started on socket: ", peer.get_socket())
+```
+
+### create_client
+
+```gdscript
+func create_client(socket_id: String, remote_user_id: String) -> Error
+```
+
+Creates a client instance and sends a connection request to the server.
+
+**Parameters:**
+- `socket_id` - The socket ID of the server to connect to
+- `remote_user_id` - The EOS Product User ID of the server
+
+**Returns:** `OK` on success, error code on failure
+
+**Source:** `eosg_multiplayer_peer.cpp:102`
+
+**Example:**
+```gdscript
+var peer = EOSGMultiplayerPeer.new()
+var server_user_id = "0002abcdef1234567890abcdef123456"
+var result = peer.create_client("game_lobby_1", server_user_id)
+if result == OK:
+    multiplayer.multiplayer_peer = peer
+    peer.peer_connected.connect(_on_connected_to_server)
+```
+
+### create_mesh
+
+```gdscript
+func create_mesh(socket_id: String) -> Error
+```
+
+Creates a mesh instance using the given socket ID. Other mesh instances can send connection requests using this socket ID.
+
+**Parameters:**
+- `socket_id` - The socket ID the mesh instance uses to listen for connection requests
+
+**Returns:** `OK` on success, error code on failure
+
+**Source:** `eosg_multiplayer_peer.cpp:152`
+
+**Example:**
+```gdscript
+var peer = EOSGMultiplayerPeer.new()
+var result = peer.create_mesh("mesh_network")
+if result == OK:
+    multiplayer.multiplayer_peer = peer
+```
+
+### add_mesh_peer
+
+```gdscript
+func add_mesh_peer(remote_user_id: String) -> Error
+```
+
+Sends a connection request to another mesh instance. Only works when in mesh mode.
+
+**Parameters:**
+- `remote_user_id` - The EOS Product User ID of the other mesh instance
+
+**Returns:** `OK` on success, error code on failure
+
+**Source:** `eosg_multiplayer_peer.cpp:186`
+
+**Example:**
+```gdscript
+var peer = EOSGMultiplayerPeer.new()
+peer.create_mesh("mesh_network")
+peer.add_mesh_peer("0002abcdef1234567890abcdef123456")
+```
+
+### get_socket
+
+```gdscript
+func get_socket() -> String
+```
+
+Returns the socket ID of this multiplayer instance.
+
+**Source:** `eosg_multiplayer_peer.cpp:208`
+
+### get_all_connection_requests
+
+```gdscript
+func get_all_connection_requests() -> Array
+```
+
+Returns all pending connection requests as an array of user ID strings. Returns an empty array if there are none.
+
+**Source:** `eosg_multiplayer_peer.cpp:217`
+
+**Example:**
+```gdscript
+func _on_incoming_connection_request(data: Dictionary):
+    var requests = peer.get_all_connection_requests()
+    print("Pending requests: ", requests.size())
+    for user_id in requests:
+        print("Request from: ", user_id)
+```
+
+### get_peer_user_id
+
+```gdscript
+func get_peer_user_id(peer_id: int) -> String
+```
+
+Returns the EOS Product User ID of the given peer. Returns an empty string if the peer is not found.
+
+**Parameters:**
+- `peer_id` - The peer ID to look up
+
+**Source:** `eosg_multiplayer_peer.cpp:232`
+
+### get_peer_id
+
+```gdscript
+func get_peer_id(remote_user_id: String) -> int
+```
+
+Retrieves the peer ID using their EOS Product User ID. Returns `0` if no matching peer is found.
+
+**Parameters:**
+- `remote_user_id` - The EOS Product User ID to look up
+
+**Source:** `eosg_multiplayer_peer.cpp:249`
+
+### has_peer
+
+```gdscript
+func has_peer(peer_id: int) -> bool
+```
+
+Returns whether this multiplayer instance has the given peer ID.
+
+**Source:** `eosg_multiplayer_peer.cpp:267`
+
+### has_user_id
+
+```gdscript
+func has_user_id(remote_user_id: String) -> bool
+```
+
+Returns whether this multiplayer instance has a peer with the given EOS Product User ID.
+
+**Source:** `eosg_multiplayer_peer.cpp:278`
+
+### get_all_peers
+
+```gdscript
+func get_all_peers() -> Dictionary
+```
+
+Gets all connected peers as a Dictionary. Keys are peer IDs (int), values are EOS Product User IDs (String).
+
+**Source:** `eosg_multiplayer_peer.cpp:307`
+
+**Example:**
+```gdscript
+var peers = peer.get_all_peers()
+for peer_id in peers:
+    print("Peer %d: %s" % [peer_id, peers[peer_id]])
+```
+
+### set_allow_delayed_delivery
+
+```gdscript
+func set_allow_delayed_delivery(allow: bool) -> void
+```
+
+Sets whether delayed delivery should be allowed on all sent packets. If enabled, packets will be delayed in their delivery if a connection has not been established yet. Otherwise, packets are dropped.
+
+**Source:** `eosg_multiplayer_peer.cpp:324`
+
+### is_allowing_delayed_delivery
+
+```gdscript
+func is_allowing_delayed_delivery() -> bool
+```
+
+Returns whether delayed delivery is enabled.
+
+**Source:** `eosg_multiplayer_peer.cpp:332`
+
+### set_auto_accept_connection_requests
+
+```gdscript
+func set_auto_accept_connection_requests(enable: bool) -> void
+```
+
+Sets whether to auto-accept connection requests when they are received. If disabled, connection requests are added to a pending list to be accepted or denied manually.
+
+**Default:** `true`
+
+**Source:** `eosg_multiplayer_peer.cpp:344`
+
+### is_auto_accepting_connection_requests
+
+```gdscript
+func is_auto_accepting_connection_requests() -> bool
+```
+
+Returns whether auto-accepting connection requests is enabled.
+
+**Source:** `eosg_multiplayer_peer.cpp:352`
+
+### accept_connection_request
+
+```gdscript
+func accept_connection_request(remote_user_id: String) -> void
+```
+
+Accepts a connection request from the given user. The peer will establish a connection and exchange peer IDs. Does nothing if no matching connection request is found.
+
+**Parameters:**
+- `remote_user_id` - The EOS Product User ID of the peer to accept
+
+**Source:** `eosg_multiplayer_peer.cpp:364`
+
+**Example:**
+```gdscript
+func _on_incoming_connection_request(data: Dictionary):
+    var remote_user_id = data["remote_user_id"]
+    # Validate the user, then accept
+    peer.accept_connection_request(remote_user_id)
+```
+
+### deny_connection_request
+
+```gdscript
+func deny_connection_request(remote_user_id: String) -> void
+```
+
+Denies a connection request from the given user. The connection request is removed from the pending list and the connection is closed.
+
+**Parameters:**
+- `remote_user_id` - The EOS Product User ID of the peer to deny
+
+**Source:** `eosg_multiplayer_peer.cpp:392`
+
+### accept_all_connection_requests
+
+```gdscript
+func accept_all_connection_requests() -> void
+```
+
+Accepts all pending connection requests.
+
+**Source:** `eosg_multiplayer_peer.cpp:416`
+
+### deny_all_connection_requests
+
+```gdscript
+func deny_all_connection_requests() -> void
+```
+
+Denies all pending connection requests.
+
+**Source:** `eosg_multiplayer_peer.cpp:434`
+
+### get_active_mode
+
+```gdscript
+func get_active_mode() -> int
+```
+
+Returns the active mode of the multiplayer peer:
+- `0` - MODE_NONE (not active)
+- `1` - MODE_SERVER
+- `2` - MODE_CLIENT
+- `3` - MODE_MESH
+
+**Source:** `eosg_multiplayer_peer.cpp:453`
+
+### is_polling
+
+```gdscript
+func is_polling() -> bool
+```
+
+Returns whether the peer is currently polling for packets.
+
+**Source:** `eosg_multiplayer_peer.h:254`
+
+### set_is_polling
+
+```gdscript
+func set_is_polling(polling: bool) -> void
+```
+
+Sets whether the peer should poll for packets. Useful for controlling when packets are processed.
+
+**Source:** `eosg_multiplayer_peer.h:258`
+
+## Signals
+
+### peer_connection_established
+
+```gdscript
+signal peer_connection_established(callback_data: Dictionary)
+```
+
+Emitted when a peer connection is established.
+
+**callback_data keys:**
+- `local_user_id` (String) - Your EOS Product User ID
+- `remote_user_id` (String) - The other peer's EOS Product User ID
+- `socket` (String) - The socket ID of the connection
+- `connection_type` (int) - 0 = new connection, 1 = reconnection
+- `network_type` (int) - 0 = direct connection, 1 = relay server
+
+**Source:** `eosg_multiplayer_peer.cpp:54`
+
+### peer_connection_interrupted
+
+```gdscript
+signal peer_connection_interrupted(callback_data: Dictionary)
+```
+
+Emitted when a peer connection is interrupted.
+
+**callback_data keys:**
+- `local_user_id` (String)
+- `remote_user_id` (String)
+- `socket` (String)
+
+**Source:** `eosg_multiplayer_peer.cpp:55`
+
+### peer_connection_closed
+
+```gdscript
+signal peer_connection_closed(callback_data: Dictionary)
+```
+
+Emitted when a peer connection is closed.
+
+**callback_data keys:**
+- `local_user_id` (String)
+- `remote_user_id` (String)
+- `socket` (String)
+- `reason` (int) - EOS connection closed reason code
+
+**Source:** `eosg_multiplayer_peer.cpp:56`
+
+### incoming_connection_request
+
+```gdscript
+signal incoming_connection_request(callback_data: Dictionary)
+```
+
+Emitted when a connection request is received.
+
+**callback_data keys:**
+- `local_user_id` (String)
+- `remote_user_id` (String)
+- `socket_name` (String)
+
+**Source:** `eosg_multiplayer_peer.cpp:57`
+
+## Usage Examples
+
+### Creating a Server
+
+```gdscript
+extends Node
+
+var peer: EOSGMultiplayerPeer
+
+func _ready():
+    peer = EOSGMultiplayerPeer.new()
+    peer.peer_connected.connect(_on_peer_connected)
+    peer.peer_disconnected.connect(_on_peer_disconnected)
+    peer.incoming_connection_request.connect(_on_connection_request)
+    
+    var result = peer.create_server("my_game_server")
+    if result == OK:
+        multiplayer.multiplayer_peer = peer
+        print("Server started")
+
+func _on_peer_connected(id: int):
+    print("Peer connected: ", id)
+    print("User ID: ", peer.get_peer_user_id(id))
+
+func _on_peer_disconnected(id: int):
+    print("Peer disconnected: ", id)
+
+func _on_connection_request(data: Dictionary):
+    print("Connection request from: ", data["remote_user_id"])
+    # Auto-accept is enabled by default, but you can manually control it:
+    # peer.accept_connection_request(data["remote_user_id"])
+```
+
+### Creating a Client
+
+```gdscript
+extends Node
+
+var peer: EOSGMultiplayerPeer
+
+func connect_to_server(server_user_id: String):
+    peer = EOSGMultiplayerPeer.new()
+    peer.peer_connected.connect(_on_connected_to_server)
+    peer.peer_connection_closed.connect(_on_disconnected)
+    
+    var result = peer.create_client("my_game_server", server_user_id)
+    if result == OK:
+        multiplayer.multiplayer_peer = peer
+        print("Connecting to server...")
+
+func _on_connected_to_server(id: int):
+    if id == 1:  # Server always has ID 1
+        print("Connected to server!")
+        print("My peer ID: ", peer.get_unique_id())
+
+func _on_disconnected(data: Dictionary):
+    print("Disconnected from server")
+    print("Reason: ", data["reason"])
+```
+
+### Creating a Mesh Network
+
+```gdscript
+extends Node
+
+var peer: EOSGMultiplayerPeer
+
+func create_mesh_peer():
+    peer = EOSGMultiplayerPeer.new()
+    peer.peer_connected.connect(_on_mesh_peer_connected)
+    peer.incoming_connection_request.connect(_on_mesh_connection_request)
+    
+    var result = peer.create_mesh("mesh_network")
+    if result == OK:
+        multiplayer.multiplayer_peer = peer
+        print("Mesh peer created with ID: ", peer.get_unique_id())
+
+func connect_to_mesh_peer(remote_user_id: String):
+    peer.add_mesh_peer(remote_user_id)
+
+func _on_mesh_peer_connected(id: int):
+    print("Mesh peer connected: ", id)
+    var all_peers = peer.get_all_peers()
+    print("Total connected peers: ", all_peers.size())
+
+func _on_mesh_connection_request(data: Dictionary):
+    print("Mesh connection request from: ", data["remote_user_id"])
+```
+
+### Manual Connection Request Handling
+
+```gdscript
+func _ready():
+    peer = EOSGMultiplayerPeer.new()
+    peer.set_auto_accept_connection_requests(false)
+    peer.incoming_connection_request.connect(_on_connection_request)
+    peer.create_server("my_game_server")
+    multiplayer.multiplayer_peer = peer
+
+func _on_connection_request(data: Dictionary):
+    var remote_user_id = data["remote_user_id"]
+    
+    # Custom validation logic
+    if await validate_user(remote_user_id):
+        peer.accept_connection_request(remote_user_id)
+        print("Accepted connection from: ", remote_user_id)
+    else:
+        peer.deny_connection_request(remote_user_id)
+        print("Denied connection from: ", remote_user_id)
+
+func validate_user(user_id: String) -> bool:
+    # Your validation logic here
+    return true
+```
+
+## Important Notes
+
+- The local user ID must be set before creating any multiplayer instance. This is typically done automatically when logging in via the Connect interface.
+- Socket IDs must be alphanumeric only and cannot exceed 32 characters.
+- EOS handles NAT punchthrough automatically. If a direct connection fails, a relay server is used.
+- Server instances always have peer ID `1`.
+- Mesh instances do NOT relay packets - peers can only send to directly connected peers.
+- The `TRANSFER_MODE_UNRELIABLE_ORDERED` mode is not supported by EOS and will automatically fall back to `TRANSFER_MODE_RELIABLE`.
+- Maximum packet size is limited by `EOS_P2P_MAX_PACKET_SIZE` (approximately 1170 bytes).
+- Connection requests are auto-accepted by default. Use `set_auto_accept_connection_requests(false)` for manual control.
+
+## See Also
+
+- [EOSGPacketPeerMediator](/reference/eosg-packet-peer-mediator) - Manages packet routing for multiplayer instances
+- [Godot MultiplayerPeer Documentation](https://docs.godotengine.org/en/stable/classes/class_multiplayerpeer.html)
+- [EOS P2P Interface Documentation](https://dev.epicgames.com/docs/game-services/p-2-p)

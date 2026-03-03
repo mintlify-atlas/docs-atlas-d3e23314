@@ -1,0 +1,191 @@
+---
+title: P2P Interface
+description: API reference for the EOS P2P Interface in Godot
+---
+
+The P2P Interface provides peer-to-peer networking capabilities with NAT traversal.
+
+## Overview
+
+The P2P Interface allows direct peer-to-peer connections between players with:
+
+- NAT traversal and relay support
+- Packet sending and receiving
+- Connection management
+- Network quality monitoring
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### p2p_interface_query_nat_type
+
+```gdscript
+IEOS.p2p_interface_query_nat_type() -> void
+```
+
+Queries the local NAT type.
+
+**Callback Signal:** `p2p_interface_query_nat_type_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `nat_type` - EOS_ENATType
+
+### p2p_interface_get_nat_type
+
+```gdscript
+IEOS.p2p_interface_get_nat_type() -> Dictionary
+```
+
+Gets the cached NAT type.
+
+**Returns:** Dictionary with `result_code` and `nat_type`
+
+### p2p_interface_set_relay_control
+
+```gdscript
+IEOS.p2p_interface_set_relay_control(control: int) -> int
+```
+
+Sets relay control options.
+
+**Parameters:**
+- `control` - EOS_ERelayControl value
+
+**Returns:** EOS_EResult
+
+### p2p_interface_get_relay_control
+
+```gdscript
+IEOS.p2p_interface_get_relay_control() -> Dictionary
+```
+
+Gets the current relay control setting.
+
+**Returns:** Dictionary with `result_code` and `relay_control`
+
+### p2p_interface_set_port_range
+
+```gdscript
+IEOS.p2p_interface_set_port_range(options: RefCounted) -> int
+```
+
+Sets the port range for P2P connections.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `port` - Starting port number
+  - `max_additional_ports_to_try` - Number of additional ports
+
+**Returns:** EOS_EResult
+
+### p2p_interface_get_port_range
+
+```gdscript
+IEOS.p2p_interface_get_port_range() -> Dictionary
+```
+
+Gets the configured port range.
+
+**Returns:** Dictionary with `result_code`, `port`, and `max_additional_ports_to_try`
+
+### p2p_interface_set_packet_queue_size
+
+```gdscript
+IEOS.p2p_interface_set_packet_queue_size(options: RefCounted) -> int
+```
+
+Sets packet queue sizes.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `incoming_packet_queue_max_size_bytes` - Incoming queue size
+  - `outgoing_packet_queue_max_size_bytes` - Outgoing queue size
+
+**Returns:** EOS_EResult
+
+### p2p_interface_get_packet_queue_info
+
+```gdscript
+IEOS.p2p_interface_get_packet_queue_info() -> Dictionary
+```
+
+Gets current packet queue statistics.
+
+**Returns:** Dictionary with queue statistics
+
+## Low-Level Methods
+
+The following methods are prefixed with `_` and are used internally. For high-level P2P networking, consider using the EOS Multiplayer peer implementation.
+
+### _p2p_send_packet
+
+Sends a packet to a remote peer.
+
+### _p2p_receive_packet
+
+Receives a packet from a peer.
+
+### _p2p_accept_connection
+
+Accepts an incoming connection.
+
+### _p2p_close_connection
+
+Closes a connection to a peer.
+
+### _p2p_close_all_connections
+
+Closes all P2P connections.
+
+### _p2p_get_next_packet_size
+
+Gets the size of the next packet in the queue.
+
+### _p2p_clear_packet_queue
+
+Clears the packet queue.
+
+### _p2p_add_notify_peer_connection_established
+
+Adds a notification for when a peer connection is established.
+
+### _p2p_add_notify_peer_connection_closed
+
+Adds a notification for when a peer connection closes.
+
+### _p2p_add_notify_peer_connection_request
+
+Adds a notification for incoming connection requests.
+
+### _p2p_add_notify_peer_connection_interrupted
+
+Adds a notification for connection interruptions.
+
+## Example Usage
+
+```gdscript
+# Query NAT type
+IEOS.p2p_interface_query_nat_type_callback.connect(_on_nat_type_queried)
+IEOS.p2p_interface_query_nat_type()
+
+func _on_nat_type_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("NAT Type: ", data.nat_type)
+
+# Set port range
+var port_result = IEOS.p2p_interface_set_port_range({
+    "port": 7777,
+    "max_additional_ports_to_try": 10
+})
+
+if port_result == EOS_EResult.EOS_Success:
+    print("Port range configured")
+```
+
+## See Also
+
+- EOS Multiplayer Peer - High-level multiplayer implementation
+- [Lobby Interface](/reference/lobby-interface) - Lobby management
+- [Sessions Interface](/reference/sessions-interface) - Session management

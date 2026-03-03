@@ -1,0 +1,320 @@
+---
+title: 'HLobbies'
+description: 'Lobby management and matchmaking for Epic Online Services'
+---
+
+## Overview
+
+The `HLobbies` class provides methods for creating, joining, and searching for lobbies. Lobbies are used for multiplayer matchmaking and game sessions.
+
+## Properties
+
+### max_search_results
+
+```gdscript
+var max_search_results: int = 25
+```
+
+The maximum number of lobbies to return in search calls (except for `create_search` and `search_async`).
+
+### presence_enabled
+
+```gdscript
+var presence_enabled: bool = true
+```
+
+Whether to show the lobby in the user's presence.
+
+### local_rtc_options
+
+```gdscript
+var local_rtc_options: Dictionary
+```
+
+Local RTC options for the lobby. A Dictionary with keys:
+- `flags`: A bitwise-or union of `EOS.RTC.JoinRoomFlags`
+- `use_manual_audio_input`: bool
+- `use_manual_audio_output`: bool
+- `local_audio_device_input_starts_muted`: bool
+
+Defaults to `{flags = EOS.RTC.JoinRoomFlags.EnableDataChannel}`.
+
+## Methods
+
+### create_lobby_async
+
+```gdscript
+func create_lobby_async(opts: EOS.Lobby.CreateLobbyOptions) -> HLobby
+```
+
+Create a new lobby.
+
+<ParamField path="opts" type="EOS.Lobby.CreateLobbyOptions" required>
+  Options for creating the lobby
+</ParamField>
+
+<ResponseField name="return" type="HLobby">
+  Returns `HLobby` instance on success or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Lobby.CreateLobbyOptions.new()
+opts.max_lobby_members = 4
+opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+opts.presence_enabled = true
+
+var lobby = await HLobbies.create_lobby_async(opts)
+if lobby:
+    print("Lobby created: ", lobby.get_id())
+```
+
+### join_by_id_async
+
+```gdscript
+func join_by_id_async(lobby_id: String) -> HLobby
+```
+
+Join an existing lobby by id. It should only be used if the lobby has had Join-by-ID enabled. Additionally, Join-by-ID should only be enabled to support native invites on an integrated platform.
+
+<ParamField path="lobby_id" type="String" required>
+  The unique identifier of the lobby to join
+</ParamField>
+
+<ResponseField name="return" type="HLobby">
+  Returns `HLobby` instance on success or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var lobby = await HLobbies.join_by_id_async("lobby123")
+if lobby:
+    print("Joined lobby")
+```
+
+### join_async
+
+```gdscript
+func join_async(lobby: HLobby) -> HLobby
+```
+
+Join an existing lobby e.g. one returned from search.
+
+<ParamField path="lobby" type="HLobby" required>
+  The lobby to join (typically from a search result)
+</ParamField>
+
+<ResponseField name="return" type="HLobby">
+  Returns new `HLobby` instance on success or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var lobbies = await HLobbies.search_by_attribute_async({key = "mode", value = "ranked"})
+if not lobbies.is_empty():
+    var lobby = await HLobbies.join_async(lobbies[0])
+    if lobby:
+        print("Joined lobby")
+```
+
+### search_by_product_user_id_async
+
+```gdscript
+func search_by_product_user_id_async(product_user_id: String) -> Array
+```
+
+Search for public lobbies that a user is in.
+
+<ParamField path="product_user_id" type="String" required>
+  The product user ID to search for
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `HLobby` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var lobbies = await HLobbies.search_by_product_user_id_async("user123")
+if lobbies:
+    print("Found ", lobbies.size(), " lobbies")
+```
+
+### search_by_attribute_async
+
+```gdscript
+func search_by_attribute_async(attributes) -> Array
+```
+
+Search for public lobbies based on attributes. The input argument can either be a Dictionary or an Array of Dictionary. Note there is an implicit AND operation if multiple search attributes are provided.
+
+<ParamField path="attributes" type="Dictionary or Array" required>
+  Search attributes. Each search attribute is a Dictionary having the keys:
+  - `key`: String - the key of the attribute
+  - `value`: String - the value of the attribute
+  - `comparison`: EOS.ComparisonOp - Type of comparison to make (default is EOS.ComparisonOp.Equal)
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `HLobby` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+# Single attribute search
+var lobbies = await HLobbies.search_by_attribute_async({
+    key = "game_mode",
+    value = "deathmatch"
+})
+
+# Multiple attribute search
+var lobbies = await HLobbies.search_by_attribute_async([
+    {key = "game_mode", value = "deathmatch"},
+    {key = "difficulty", value = "hard", comparison = EOS.ComparisonOp.Equal}
+])
+```
+
+### search_by_lobby_id_async
+
+```gdscript
+func search_by_lobby_id_async(lobby_id: String) -> Array
+```
+
+Search for lobby by id. At most will return one lobby.
+
+<ParamField path="lobby_id" type="String" required>
+  The lobby ID to search for
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `HLobby` (containing at most one element) or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var lobbies = await HLobbies.search_by_lobby_id_async("lobby123")
+if lobbies and not lobbies.is_empty():
+    var lobby = lobbies[0]
+    print("Found lobby: ", lobby.get_id())
+```
+
+### search_by_bucket_id_async
+
+```gdscript
+func search_by_bucket_id_async(bucket_id: String) -> Array
+```
+
+Search for lobby by bucket id.
+
+<ParamField path="bucket_id" type="String" required>
+  The bucket ID to search for
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `HLobby` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var lobbies = await HLobbies.search_by_bucket_id_async("casual_games")
+if lobbies:
+    print("Found ", lobbies.size(), " lobbies in bucket")
+```
+
+### create_search
+
+```gdscript
+func create_search(opts: EOS.Lobby.CreateLobbySearchOptions) -> EOSGLobbySearch
+```
+
+(Advanced) Create a new lobby search. Use `search_async` to perform the search.
+
+<ParamField path="opts" type="EOS.Lobby.CreateLobbySearchOptions" required>
+  Options for creating the lobby search
+</ParamField>
+
+<ResponseField name="return" type="EOSGLobbySearch">
+  Returns `EOSGLobbySearch` instance or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Lobby.CreateLobbySearchOptions.new()
+opts.max_results = 50
+
+var search = HLobbies.create_search(opts)
+if search:
+    search.set_parameter("mode", "ranked", EOS.ComparisonOp.Equal)
+    var lobbies = await HLobbies.search_async(search)
+```
+
+### search_async
+
+```gdscript
+func search_async(lobby_search: EOSGLobbySearch) -> Array
+```
+
+(Advanced) Perform the lobby search.
+
+<ParamField path="lobby_search" type="EOSGLobbySearch" required>
+  The lobby search instance created with `create_search`
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns Array of `HLobby` or `null` on failure
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Lobby.CreateLobbySearchOptions.new()
+opts.max_results = 10
+
+var search = HLobbies.create_search(opts)
+if search:
+    search.set_parameter("region", "us-west", EOS.ComparisonOp.Equal)
+    search.set_parameter("skill_level", "2", EOS.ComparisonOp.GreaterThanOrEqual)
+    
+    var lobbies = await HLobbies.search_async(search)
+    if lobbies:
+        for lobby in lobbies:
+            print("Found lobby: ", lobby.get_id())
+```
+
+**Complete Usage Example:**
+
+```gdscript
+# Create a lobby
+var create_opts = EOS.Lobby.CreateLobbyOptions.new()
+create_opts.max_lobby_members = 4
+create_opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+
+var my_lobby = await HLobbies.create_lobby_async(create_opts)
+if my_lobby:
+    # Set lobby attributes
+    my_lobby.set_attribute({key = "game_mode", value = "team_deathmatch"})
+    my_lobby.set_attribute({key = "map", value = "desert_ruins"})
+    await my_lobby.update_async()
+    
+    print("Lobby created and configured")
+
+# Search for lobbies
+var lobbies = await HLobbies.search_by_attribute_async({
+    key = "game_mode",
+    value = "team_deathmatch"
+})
+
+if lobbies:
+    print("Found ", lobbies.size(), " lobbies")
+    for lobby in lobbies:
+        var info = lobby.get_info()
+        print("  Lobby: ", info.owner_user_id, " - ", info.available_slots, " slots")
+```

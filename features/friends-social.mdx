@@ -1,0 +1,335 @@
+---
+title: Friends and social features
+description: Implement friends lists, presence, and social features with Epic Online Services
+---
+
+Epic Online Services provides comprehensive social features including friends lists, presence, and the social overlay (Windows only). EOSG makes it easy to integrate these features through the `HFriends` class.
+
+## Overview
+
+The social features in EOS include:
+- **Friends List**: Query and display the user's Epic friends
+- **Presence**: Show what friends are currently doing
+- **Social Overlay**: Native UI for managing friends (Windows only)
+- **Friend Status**: Online/offline status and rich presence
+
+<Warning>
+Friends features require Epic Account Services authentication. You must login with `HAuth.login_account_portal_async()` or similar methods that provide an Epic Account ID.
+</Warning>
+
+## Prerequisites
+
+Before using friends features:
+
+1. **Login with Epic Account Services**:
+```gdscript
+var success = await HAuth.login_account_portal_async()
+if not success:
+    printerr("Friends features require Epic Account login")
+```
+
+2. **Request Friends List Permission**:
+```gdscript
+func _ready():
+    # Set scope flags before login
+    HAuth.auth_login_scope_flags = EOS.Auth.ScopeFlags.BasicProfile | EOS.Auth.ScopeFlags.FriendsList | EOS.Auth.ScopeFlags.Presence
+```
+
+3. **Configure in Developer Portal**:
+   - Navigate to Epic Account Services → Permissions
+   - Enable "Friends" and "Online Presence"
+
+## Querying Friends
+
+### Get Friends List
+
+```gdscript
+func load_friends():
+    # Query friends from EOS
+    var success = await HFriends.query_friends_async()
+    if not success:
+        printerr("Failed to query friends")
+        return
+    
+    # Get the cached friends list
+    var friends: Array = HFriends.get_friends_list()
+    
+    print("You have %d friends" % friends.size())
+    for friend in friends:
+        print("Friend: %s (ID: %s)" % [friend.display_name, friend.epic_account_id])
+```
+
+### Friend Data Structure
+
+Each friend object contains:
+
+```gdscript
+{
+    "epic_account_id": String,  # Epic Account ID
+    "display_name": String,     # Friend's display name
+    "status": int,              # FriendStatus enum
+}
+```
+
+## Presence System
+
+Presence shows what your friends are currently doing in games.
+
+### Query Friend Presence
+
+```gdscript
+func get_friend_presence(epic_account_id: String):
+    var opts = EOS.Presence.QueryPresenceOptions.new()
+    opts.target_user_id = epic_account_id
+    
+    EOS.Presence.PresenceInterface.query_presence(opts)
+    var ret = await IEOS.presence_interface_query_presence_callback
+    
+    if not EOS.is_success(ret):
+        printerr("Failed to query presence")
+        return
+    
+    # Get presence info
+    var info_opts = EOS.Presence.InfoOptions.new()
+    info_opts.local_user_id = HAuth.epic_account_id
+    info_opts.target_user_id = epic_account_id
+    
+    var info_ret = EOS.Presence.PresenceInterface.copy_presence(info_opts)
+    if EOS.is_success(info_ret):
+        var presence = info_ret.presence
+        print("Status: %s" % presence.status)  # ONLINE, AWAY, OFFLINE
+        print("Rich text: %s" % presence.rich_text)
+```
+
+### Set Your Own Presence
+
+```gdscript
+func set_my_presence(status_text: String):
+    var mod_opts = EOS.Presence.CreatePresenceModificationOptions.new()
+    mod_opts.local_user_id = HAuth.epic_account_id
+    
+    var mod_ret = EOS.Presence.PresenceInterface.create_presence_modification(mod_opts)
+    if not EOS.is_success(mod_ret):
+        printerr("Failed to create presence modification")
+        return
+    
+    var modification = mod_ret.presence_modification_handle
+    
+    # Set rich text
+    var data_opts = EOS.PresenceModification.SetRawRichTextOptions.new()
+    data_opts.rich_text = status_text
+    modification.set_raw_rich_text(data_opts)
+    
+    # Set status
+    var status_opts = EOS.PresenceModification.SetStatusOptions.new()
+    status_opts.status = EOS.Presence.Status.Online
+    modification.set_status(status_opts)
+    
+    # Apply changes
+    var set_opts = EOS.Presence.SetPresenceOptions.new()
+    set_opts.local_user_id = HAuth.epic_account_id
+    set_opts.presence_modification_handle = modification
+    
+    EOS.Presence.PresenceInterface.set_presence(set_opts)
+    var result = await IEOS.presence_interface_set_presence_callback
+    
+    if EOS.is_success(result):
+        print("Presence updated: %s" % status_text)
+```
+
+## Social Overlay (Windows Only)
+
+The Social Overlay provides a native Epic Games UI for managing friends, invites, and social features.
+
+<Note>
+The Social Overlay is only available on Windows. It will not work on other platforms.
+</Note>
+
+### Enable Social Overlay
+
+```gdscript
+func _ready():
+    if OS.get_name() == "Windows":
+        # Enable overlay during platform creation
+        HPlatform.flags = EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl
+        # Or for DirectX: WindowsEnableOverlayD3d9/D3d10/D3d11
+```
+
+### Show Friends List
+
+```gdscript
+func show_friends_overlay():
+    if OS.get_name() != "Windows":
+        print("Social Overlay only available on Windows")
+        return
+    
+    var opts = EOS.UI.ShowFriendsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    
+    EOS.UI.UIInterface.show_friends(opts)
+    var ret = await IEOS.ui_interface_show_friends_callback
+    
+    if EOS.is_success(ret):
+        print("Friends overlay closed")
+```
+
+### Block/Report Players
+
+```gdscript
+func show_report_player(target_user_id: String):
+    var opts = EOS.UI.ShowReportPlayerOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.target_user_id = target_user_id
+    
+    EOS.UI.UIInterface.show_report_player(opts)
+    await IEOS.ui_interface_show_report_player_callback
+```
+
+## Complete Friends UI Example
+
+```gdscript
+extends Control
+
+@onready var friends_container = $ScrollContainer/VBoxContainer
+@onready var refresh_button = $RefreshButton
+@onready var overlay_button = $OverlayButton
+
+func _ready():
+    refresh_button.pressed.connect(load_friends)
+    overlay_button.pressed.connect(show_overlay)
+    
+    # Hide overlay button on non-Windows platforms
+    overlay_button.visible = OS.get_name() == "Windows"
+    
+    # Auto-load friends on startup
+    load_friends()
+
+func load_friends():
+    # Clear existing list
+    for child in friends_container.get_children():
+        child.queue_free()
+    
+    # Query friends
+    var success = await HFriends.query_friends_async()
+    if not success:
+        show_error("Failed to load friends")
+        return
+    
+    var friends = HFriends.get_friends_list()
+    
+    if friends.is_empty():
+        var label = Label.new()
+        label.text = "No friends yet. Add friends through the Epic Games app!"
+        friends_container.add_child(label)
+        return
+    
+    # Create friend cards
+    for friend in friends:
+        create_friend_card(friend)
+
+func create_friend_card(friend: Dictionary):
+    var card = preload("res://friend_card.tscn").instantiate()
+    card.set_friend_name(friend.display_name)
+    card.set_friend_id(friend.epic_account_id)
+    
+    # Query presence for this friend
+    query_friend_status(friend.epic_account_id, card)
+    
+    friends_container.add_child(card)
+
+func query_friend_status(epic_account_id: String, card):
+    var opts = EOS.Presence.QueryPresenceOptions.new()
+    opts.target_user_id = epic_account_id
+    
+    EOS.Presence.PresenceInterface.query_presence(opts)
+    var ret = await IEOS.presence_interface_query_presence_callback
+    
+    if not EOS.is_success(ret):
+        card.set_status("Unknown")
+        return
+    
+    var info_opts = EOS.Presence.InfoOptions.new()
+    info_opts.local_user_id = HAuth.epic_account_id
+    info_opts.target_user_id = epic_account_id
+    
+    var info_ret = EOS.Presence.PresenceInterface.copy_presence(info_opts)
+    if EOS.is_success(info_ret):
+        var presence = info_ret.presence
+        var status_text = get_status_text(presence.status)
+        card.set_status(status_text)
+        
+        if presence.rich_text:
+            card.set_activity(presence.rich_text)
+
+func get_status_text(status: EOS.Presence.Status) -> String:
+    match status:
+        EOS.Presence.Status.Online:
+            return "Online"
+        EOS.Presence.Status.Away:
+            return "Away"
+        EOS.Presence.Status.ExtendedAway:
+            return "Extended Away"
+        EOS.Presence.Status.DoNotDisturb:
+            return "Do Not Disturb"
+        _:
+            return "Offline"
+
+func show_overlay():
+    var opts = EOS.UI.ShowFriendsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    EOS.UI.UIInterface.show_friends(opts)
+    await IEOS.ui_interface_show_friends_callback
+
+func show_error(message: String):
+    var label = Label.new()
+    label.text = "Error: " + message
+    label.add_theme_color_override("font_color", Color.RED)
+    friends_container.add_child(label)
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Cache Friends" icon="database">
+    Cache the friends list and only refresh when needed
+  </Card>
+  <Card title="Request Permissions" icon="shield">
+    Always request Friends and Presence scope flags during login
+  </Card>
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Some users may not have granted friends permissions
+  </Card>
+  <Card title="Platform Awareness" icon="desktop">
+    Remember Social Overlay only works on Windows
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Friends list is empty">
+  - Verify you're logged in with Epic Account Services (not just Connect)
+  - Check that `FriendsList` scope flag is set before login
+  - Ensure "Friends" permission is enabled in Developer Portal
+  - Test with an Epic account that has friends
+</Accordion>
+
+<Accordion title="Social Overlay not showing">
+  - Confirm you're running on Windows
+  - Verify platform flags include `WindowsEnableOverlayOpengl` (or D3D variant)
+  - Check that the game is bootstrapped with EOS Redistributable Installer
+  - Ensure fullscreen exclusive mode is not being used
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/features/authentication-methods">
+    Learn about Epic Account Services login
+  </Card>
+  <Card title="HFriends API" icon="code" href="/reference/hfriends">
+    Complete API reference
+  </Card>
+  <Card title="Social Overlay Guide" icon="window" href="/guides/social-overlay">
+    Detailed social overlay setup
+  </Card>
+</CardGroup>

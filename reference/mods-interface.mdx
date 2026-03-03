@@ -1,0 +1,184 @@
+---
+title: Mods Interface
+description: API reference for the EOS Mods Interface in Godot
+---
+
+The Mods Interface manages user-generated content (mods) in your game.
+
+## Overview
+
+The Mods Interface provides:
+
+- Enumerating available mods
+- Installing mods
+- Updating mods
+- Uninstalling mods
+- Querying mod information
+
+All methods are called on the `IEOS` singleton instance and use Epic Account IDs.
+
+## Methods
+
+### mods_interface_enumerate_mods
+
+```gdscript
+IEOS.mods_interface_enumerate_mods(options: RefCounted) -> void
+```
+
+Enumerates available mods.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `type` - EOS_EModEnumerationType (installed or available mods)
+  - `client_data` - Optional user data
+
+**Callback Signal:** `mods_interface_enumerate_mods_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `type` - Enumeration type
+
+### mods_interface_copy_mod_info
+
+```gdscript
+IEOS.mods_interface_copy_mod_info(options: RefCounted) -> Dictionary
+```
+
+Copies information about enumerated mods.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `type` - EOS_EModEnumerationType
+
+**Returns:** Dictionary with `result_code` and `mods` array
+
+### mods_interface_install_mod
+
+```gdscript
+IEOS.mods_interface_install_mod(options: RefCounted) -> void
+```
+
+Installs a mod.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `mod` - Mod identifier Dictionary:
+    - Namespace ID and mod ID information
+  - `remove_after_exit` - Boolean to remove mod after game exit
+  - `client_data` - Optional user data
+
+**Callback Signal:** `mods_interface_install_mod_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `mod` - Mod identifier
+
+### mods_interface_update_mod
+
+```gdscript
+IEOS.mods_interface_update_mod(options: RefCounted) -> void
+```
+
+Updates an installed mod to the latest version.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `mod` - Mod identifier Dictionary
+  - `client_data` - Optional user data
+
+**Callback Signal:** `mods_interface_update_mod_callback`
+
+### mods_interface_uninstall_mod
+
+```gdscript
+IEOS.mods_interface_uninstall_mod(options: RefCounted) -> void
+```
+
+Uninstalls a mod.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `mod` - Mod identifier Dictionary
+  - `client_data` - Optional user data
+
+**Callback Signal:** `mods_interface_uninstall_mod_callback`
+
+## Mod Enumeration Types
+
+The `type` parameter specifies which mods to enumerate:
+
+- `EOS_MET_INSTALLED` - Locally installed mods
+- `EOS_MET_ALL_AVAILABLE` - All available mods from the backend
+
+## Example Usage
+
+```gdscript
+# Enumerate installed mods
+var enum_options = {
+    "local_user_id": epic_account_id,
+    "type": EOS_EModEnumerationType.EOS_MET_INSTALLED
+}
+
+IEOS.mods_interface_enumerate_mods_callback.connect(_on_mods_enumerated)
+IEOS.mods_interface_enumerate_mods(enum_options)
+
+func _on_mods_enumerated(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var mod_info = IEOS.mods_interface_copy_mod_info({
+            "local_user_id": epic_account_id,
+            "type": data.type
+        })
+        print("Mods: ", mod_info.mods)
+
+# Install a mod
+var mod_identifier = {
+    # Mod identification fields
+}
+
+var install_options = {
+    "local_user_id": epic_account_id,
+    "mod": mod_identifier,
+    "remove_after_exit": false
+}
+
+IEOS.mods_interface_install_mod_callback.connect(_on_mod_installed)
+IEOS.mods_interface_install_mod(install_options)
+
+func _on_mod_installed(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Mod installed: ", data.mod)
+
+# Update a mod
+var update_options = {
+    "local_user_id": epic_account_id,
+    "mod": mod_identifier
+}
+
+IEOS.mods_interface_update_mod(update_options)
+
+# Uninstall a mod
+var uninstall_options = {
+    "local_user_id": epic_account_id,
+    "mod": mod_identifier
+}
+
+IEOS.mods_interface_uninstall_mod(uninstall_options)
+```
+
+## Notes
+
+- Mods must be configured in the Epic Games Developer Portal
+- The Mods Interface requires Epic Account authentication
+- Mod installation is asynchronous and may take time for large mods
+- Check the callback result to ensure operations completed successfully
+
+## See Also
+
+- Ecom Interface - For purchasing mods if they are sold as entitlements

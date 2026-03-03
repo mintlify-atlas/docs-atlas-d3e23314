@@ -1,0 +1,215 @@
+---
+title: HAchievements
+description: Query and unlock player achievements
+---
+
+## Overview
+
+HAchievements provides methods to query achievement definitions, get player achievement progress, and unlock achievements.
+
+## Signals
+
+### achievement_unlocked
+
+```gdscript
+signal achievement_unlocked(data: Dictionary)
+```
+
+Emitted when an achievement is unlocked.
+
+**Data dictionary keys:**
+- `achievement_id: String` - The achievement ID
+- `unlock_time: int` - Unix timestamp when unlocked
+- `user_id: String` - Product user ID of the user
+
+## Methods
+
+### get_all_achievements_async
+
+```gdscript
+func get_all_achievements_async() -> Array[HAchievementData]
+```
+
+Returns an array of [HAchievementData](#hachievementdata) representing all the achievements in the game.
+
+**Returns:** Array of HAchievementData objects
+
+**Example:**
+```gdscript
+var achievements = await HAchievements.get_all_achievements_async()
+for achievement in achievements:
+    print(achievement.achievement_id, ": ", achievement.get_display_name())
+```
+
+Source: [hachievements.gd:36](https://github.com/YOUR_REPO/hachievements.gd#L36)
+
+### get_player_achievements_async
+
+```gdscript
+func get_player_achievements_async() -> Array[HAchievementData]
+```
+
+Returns an array of [HAchievementData](#hachievementdata) representing all the player's achievements with current progress.
+
+**Returns:** Array of HAchievementData objects with progress information
+
+**Example:**
+```gdscript
+var player_achievements = await HAchievements.get_player_achievements_async()
+for achievement in player_achievements:
+    print(achievement.get_display_name())
+    print("Progress: ", achievement.progress, "%")
+    if achievement.is_unlocked():
+        print("Unlocked at: ", achievement.unlock_time)
+```
+
+Source: [hachievements.gd:77](https://github.com/YOUR_REPO/hachievements.gd#L77)
+
+### unlock_achievement_async
+
+```gdscript
+func unlock_achievement_async(achievement_id: String) -> bool
+```
+
+Unlock a single achievement.
+
+**Parameters:**
+- `achievement_id`: The ID of the achievement to unlock
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAchievements.unlock_achievement_async("FIRST_VICTORY")
+if success:
+    print("Achievement unlocked!")
+```
+
+Source: [hachievements.gd:134](https://github.com/YOUR_REPO/hachievements.gd#L134)
+
+### unlock_achievements_async
+
+```gdscript
+func unlock_achievements_async(achievement_ids: Array) -> bool
+```
+
+Unlock multiple achievements at once.
+
+**Parameters:**
+- `achievement_ids`: Array of achievement IDs to unlock
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAchievements.unlock_achievements_async(["ACH_1", "ACH_2", "ACH_3"])
+```
+
+Source: [hachievements.gd:139](https://github.com/YOUR_REPO/hachievements.gd#L139)
+
+## HAchievementData
+
+Achievement data from Epic Online Services.
+
+### Properties
+
+```gdscript
+var achievement_id: String
+var unlocked_display_name: String
+var unlocked_description: String
+var unlocked_icon_url: String
+var locked_display_name: String
+var locked_description: String
+var locked_icon_url: String
+var flavor_text: String
+var is_hidden: bool
+var progress: float  # 0.0 to 100.0
+var unlock_time: int  # Unix timestamp or EOS.Achievements.UNLOCK_TIME_UNDEFINED
+var stats: Array  # Array of dictionaries with keys: name, current_value, threshold_value
+```
+
+### Methods
+
+#### is_unlocked
+
+```gdscript
+func is_unlocked() -> bool
+```
+
+Returns whether this achievement is unlocked.
+
+#### get_display_name
+
+```gdscript
+func get_display_name() -> String
+```
+
+Get the appropriate display name based on whether the achievement is unlocked or not.
+
+#### get_description
+
+```gdscript
+func get_description() -> String
+```
+
+Get the appropriate description based on whether the achievement is unlocked or not.
+
+#### get_icon_url
+
+```gdscript
+func get_icon_url() -> String
+```
+
+Get the appropriate icon URL based on whether the achievement is unlocked or not.
+
+#### update_stat
+
+```gdscript
+func update_stat(p_stat: Dictionary) -> void
+```
+
+Update a stat associated with this achievement.
+
+**Parameters:**
+- `p_stat`: Dictionary with keys: `name`, `current_value`, `threshold_value`
+
+## Usage Example
+
+```gdscript
+extends Node
+
+func _ready():
+    # Connect to achievement unlocked signal
+    HAchievements.achievement_unlocked.connect(_on_achievement_unlocked)
+    
+    # Load all achievements
+    var all_achievements = await HAchievements.get_all_achievements_async()
+    print("Total achievements: ", all_achievements.size())
+    
+    # Check player progress
+    var player_achievements = await HAchievements.get_player_achievements_async()
+    for achievement in player_achievements:
+        if achievement.is_unlocked():
+            print("✓ ", achievement.get_display_name())
+        else:
+            print("✗ ", achievement.get_display_name(), " (", achievement.progress, "%)")
+
+func _on_player_won_first_match():
+    # Unlock achievement when player wins first match
+    await HAchievements.unlock_achievement_async("FIRST_VICTORY")
+
+func _on_achievement_unlocked(data: Dictionary):
+    print("Achievement unlocked: ", data.achievement_id)
+    # Show achievement notification UI
+```
+
+## Best Practices
+
+<Note>
+Achievements must be configured in the Epic Games Developer Portal before they can be used in your game.
+</Note>
+
+1. **Cache achievements**: Call `get_all_achievements_async()` once at startup and cache the results
+2. **Monitor progress**: Use the `stats` array in HAchievementData to track achievement progress
+3. **Handle unlock events**: Connect to the `achievement_unlocked` signal to show notifications
+4. **Batch unlocks**: Use `unlock_achievements_async()` to unlock multiple achievements efficiently

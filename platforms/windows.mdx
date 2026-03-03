@@ -1,0 +1,192 @@
+---
+title: Windows Setup
+description: Complete setup guide for Epic Online Services in Godot on Windows
+---
+
+## Overview
+
+Epic Online Services Godot (EOSG) supports Windows x64 platforms. This guide covers the complete setup process for developing and exporting your game on Windows.
+
+## Prerequisites
+
+- Godot Engine 4.2 or later
+- Epic Online Services C SDK
+- A product registered with Epic Games Services
+- Windows x64 development environment
+
+## Platform Support
+
+EOSG supports **Windows x64** architecture with full access to all EOS features including:
+
+- Social Overlay
+- All authentication methods
+- Lobbies, Sessions, and Multiplayer
+- Voice communication
+- AntiCheat
+- All other EOS services
+
+## Account Portal Login Setup
+
+If you want to use the **Account Portal** login option in Epic Online Services, you need to bootstrap the Godot/Game executable as required by EOS SDK 1.15 and greater.
+
+<Note>
+The Account Portal provides a seamless Epic Games account login experience for players.
+</Note>
+
+### Bootstrapping the Executable
+
+<Steps>
+
+<Step title="Understand the bootstrapping requirement">
+
+EOS SDK 1.15+ requires executables to be bootstrapped to use the Account Portal login method. This applies to both development and production environments.
+
+See the [Redistributable Installer documentation](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html) for complete details.
+
+</Step>
+
+<Step title="Create the configuration file for development">
+
+During game development, you need to bootstrap the Godot Editor executable. Create a `.ini` file with the following configuration:
+
+```ini
+ApplicationPath=Godot_v4.2.0-stable_win64.exe
+WorkingDirectory=
+WaitForExit=0
+NoOperation=0
+```
+
+<Note>
+Replace `Godot_v4.2.0-stable_win64.exe` with your actual Godot editor executable name.
+</Note>
+
+</Step>
+
+<Step title="Run the bootstrapping service">
+
+Follow the instructions in [Running the service for local development](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html#runningtheserviceforlocaldevelopment) to bootstrap the Godot Editor executable.
+
+This allows you to test the Account Portal login during development.
+
+</Step>
+
+<Step title="Bootstrap the exported game">
+
+After exporting your game, create a new `.ini` file to bootstrap the exported game executable:
+
+```ini
+ApplicationPath=My Amazing Game.exe
+WorkingDirectory=
+WaitForExit=0
+NoOperation=0
+```
+
+Replace `My Amazing Game.exe` with your actual game executable name.
+
+</Step>
+
+</Steps>
+
+## Building from Source
+
+If you need to build the plugin from source for Windows:
+
+<Steps>
+
+<Step title="Set up the development environment">
+
+1. Download/clone the EOSG repository
+2. Run the command to initialize submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+</Step>
+
+<Step title="Add the EOS SDK">
+
+Extract the EOS C SDK zip downloaded from Epic Games, rename it to `eos-sdk` and paste it in the `thirdparty/` folder.
+
+</Step>
+
+<Step title="Build for debug (with debug symbols)">
+
+```bash
+scons platform=windows target=template_debug dev_build=yes
+```
+
+</Step>
+
+<Step title="Build for release (optimized)">
+
+```bash
+scons platform=windows target=template_release
+```
+
+The built GDExtension library will be in the `res://addons/epic-online-services-godot/bin/` folder.
+
+</Step>
+
+</Steps>
+
+## Exporting Your Game
+
+<Steps>
+
+<Step title="Configure the export preset">
+
+1. In the Godot Editor, go to **Project → Export**
+2. Create a new Windows Desktop export preset
+3. Configure your export settings (executable name, icon, etc.)
+
+</Step>
+
+<Step title="Export the project">
+
+Click **Export Project** to create your Windows executable.
+
+</Step>
+
+<Step title="Bootstrap the executable (if using Account Portal)">
+
+If you're using Account Portal login, follow the bootstrapping steps outlined above for your exported executable.
+
+</Step>
+
+</Steps>
+
+## Testing
+
+After setup, you can test EOS functionality:
+
+1. Run your game or the Godot Editor
+2. The Social Overlay should be available (Windows only feature)
+3. Test authentication with your preferred login method
+4. Verify network connectivity and EOS services
+
+## Troubleshooting
+
+### Social Overlay Not Appearing
+
+- Ensure you're using a Windows x64 build
+- Verify that the EOS SDK is properly initialized
+- Check that Social Overlay is enabled in your Epic Games product settings
+
+### Account Portal Login Fails
+
+- Verify that you've properly bootstrapped the executable
+- Check that the `.ini` file path points to the correct executable
+- Ensure the bootstrapping service is running
+
+### Build Errors
+
+- Verify that the EOS SDK is in the correct `thirdparty/eos-sdk` folder
+- Ensure all submodules are initialized
+- Check that you're using a compatible Windows development environment
+
+## Next Steps
+
+- [Configure EOS credentials](/getting-started/credentials)
+- [Implement authentication](/features/authentication)
+- [Set up multiplayer](/features/lobbies)

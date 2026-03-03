@@ -1,0 +1,141 @@
+---
+title: HStats
+description: Query and update player statistics
+---
+
+## Overview
+
+HStats provides methods to query and ingest (update) player statistics in Epic Online Services.
+
+## Methods
+
+### get_stats_async
+
+```gdscript
+func get_stats_async() -> Array
+```
+
+Returns an array of stats for the current user.
+
+**Returns:** Array of dictionaries, where each stat has:
+- `name: String` - name of the stat
+- `value: int` - current value for the stat
+- `start_time: int` - unix timestamp or `EOS.Stats.STATS_TIME_UNDEFINED`
+- `end_time: int` - unix timestamp or `EOS.Stats.STATS_TIME_UNDEFINED`
+
+**Example:**
+```gdscript
+var stats = await HStats.get_stats_async()
+for stat in stats:
+    print(stat.name, ": ", stat.value)
+```
+
+Source: [hstats.gd:36](https://github.com/YOUR_REPO/hstats.gd#L36)
+
+### ingest_stat_async
+
+```gdscript
+func ingest_stat_async(stat_name: String, _ingest_amount: int) -> EOS.Result
+```
+
+Ingest (update) a stat by the specified amount.
+
+**Parameters:**
+- `stat_name`: Name of the stat to update
+- `_ingest_amount`: Amount to add to the stat
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+# Increment kills stat by 1
+var result = await HStats.ingest_stat_async("kills", 1)
+if EOS.is_success(result):
+    print("Stat updated successfully")
+
+# Add 100 points to score
+await HStats.ingest_stat_async("score", 100)
+```
+
+Source: [hstats.gd:62](https://github.com/YOUR_REPO/hstats.gd#L62)
+
+<Note>
+Stats must be configured in the Epic Games Developer Portal before they can be used in your game.
+</Note>
+
+## Usage Example
+
+```gdscript
+extends Node
+
+var player_stats = {}
+
+func _ready():
+    # Load stats when game starts
+    await load_player_stats()
+
+func load_player_stats():
+    var stats = await HStats.get_stats_async()
+    
+    # Store stats in a dictionary for easy access
+    for stat in stats:
+        player_stats[stat.name] = stat.value
+    
+    print("Player kills: ", player_stats.get("kills", 0))
+    print("Player deaths: ", player_stats.get("deaths", 0))
+    print("Player score: ", player_stats.get("score", 0))
+
+func on_player_killed_enemy():
+    # Update kills stat
+    var result = await HStats.ingest_stat_async("kills", 1)
+    if EOS.is_success(result):
+        player_stats["kills"] = player_stats.get("kills", 0) + 1
+        update_ui()
+
+func on_player_died():
+    # Update deaths stat
+    await HStats.ingest_stat_async("deaths", 1)
+    player_stats["deaths"] = player_stats.get("deaths", 0) + 1
+    update_ui()
+
+func on_match_completed(score: int):
+    # Add score from match
+    await HStats.ingest_stat_async("score", score)
+    player_stats["score"] = player_stats.get("score", 0) + score
+    update_ui()
+
+func update_ui():
+    $StatsLabel.text = "K: %d D: %d Score: %d" % [
+        player_stats.get("kills", 0),
+        player_stats.get("deaths", 0),
+        player_stats.get("score", 0)
+    ]
+```
+
+## Stats and Achievements
+
+Stats are often used in conjunction with achievements. You can configure achievements to unlock when a stat reaches a certain threshold:
+
+```gdscript
+func check_achievement_progress():
+    var stats = await HStats.get_stats_async()
+    var achievements = await HAchievements.get_player_achievements_async()
+    
+    for achievement in achievements:
+        if not achievement.is_unlocked():
+            print(achievement.get_display_name())
+            for stat in achievement.stats:
+                print("  %s: %d / %d" % [stat.name, stat.current_value, stat.threshold_value])
+```
+
+## Best Practices
+
+1. **Configure in Dev Portal**: Define all stats in the Epic Games Developer Portal before using them
+2. **Cache locally**: Store stats in memory after loading to avoid repeated queries
+3. **Batch updates**: If updating multiple stats, consider batching the updates rather than making individual calls
+4. **Handle failures**: Check the result code when ingesting stats and retry if necessary
+5. **Sync with achievements**: Stats are automatically tracked for achievement progress
+
+<Warning>
+Stats are tied to the product user ID. Make sure the user is logged in before calling any stats methods.
+</Warning>

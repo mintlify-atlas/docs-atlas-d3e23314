@@ -1,0 +1,428 @@
+---
+title: HAuth
+description: Handle user authentication with Epic Account Services and Epic Game Services
+---
+
+## Overview
+
+HAuth manages user authentication for both Epic Account Services (EAS) and Epic Game Services (EGS). It supports multiple login methods including DevTool, Account Portal, Epic Games Launcher, persistent auth, and anonymous login.
+
+## Signals
+
+### logged_in
+
+```gdscript
+signal logged_in
+```
+
+Emitted when the user logs in to Epic Game Services. If `auto_connect_account` is false, this is also emitted when logging in to Epic Account Services.
+
+### logged_out
+
+```gdscript
+signal logged_out
+```
+
+Emitted when the user logs out of Epic Game Services.
+
+### login_error
+
+```gdscript
+signal login_error(result_code: EOS.Result)
+```
+
+Emitted when an error occurs while logging in.
+
+### logged_in_auth
+
+```gdscript
+signal logged_in_auth
+```
+
+Emitted when logged in to Epic Account Services.
+
+### logged_out_auth
+
+```gdscript
+signal logged_out_auth
+```
+
+Emitted when logged out of Epic Account Services.
+
+### login_auth_error
+
+```gdscript
+signal login_auth_error(result_code: EOS.Result)
+```
+
+Emitted when an error occurs during Epic Account Services login.
+
+### logged_in_connect
+
+```gdscript
+signal logged_in_connect
+```
+
+Emitted when logged in to Epic Game Services.
+
+### logged_out_connect
+
+```gdscript
+signal logged_out_connect
+```
+
+Emitted when logged out of Epic Game Services.
+
+### login_connect_error
+
+```gdscript
+signal login_connect_error(result_code: EOS.Result)
+```
+
+Emitted when an error occurs during Epic Game Services login.
+
+### display_name_changed
+
+```gdscript
+signal display_name_changed
+```
+
+Emitted when the display name changes. Get the display name using `HAuth.display_name`.
+
+### external_account_info_changed
+
+```gdscript
+signal external_account_info_changed
+```
+
+Emitted when the external account info changes.
+
+## Properties
+
+### epic_account_id
+
+```gdscript
+var epic_account_id: String
+```
+
+The epic account id of the logged in user (Used for Epic Account Services).
+
+### product_user_id
+
+```gdscript
+var product_user_id: String
+```
+
+The product user id of the logged in user (Used for Epic Game Services).
+
+### display_name
+
+```gdscript
+var display_name: String
+```
+
+The display name of the logged in user.
+
+### auto_fetch_external_account
+
+```gdscript
+var auto_fetch_external_account: bool = true
+```
+
+Whether to automatically fetch the external account linked with Epic Game Services.
+
+### external_account_info
+
+```gdscript
+var external_account_info: Dictionary
+```
+
+The external account linked with Epic Game Services. See [get_external_account_by_type_async](#get_external_account_by_type_async) for dictionary structure.
+
+### auto_link_account
+
+```gdscript
+var auto_link_account: bool = true
+```
+
+Whether to automatically link an epic account for external identity provider.
+
+### auto_connect_account
+
+```gdscript
+var auto_connect_account: bool = true
+```
+
+Whether to automatically login to Epic Game Services after logging in to Epic Account Services.
+
+### auth_login_scope_flags
+
+```gdscript
+var auth_login_scope_flags: int
+```
+
+Default scope flags used when logging in with Epic Account Services. Defaults to `EOS.Auth.ScopeFlags.BasicProfile | EOS.Auth.ScopeFlags.Presence | EOS.Auth.ScopeFlags.FriendsList`.
+
+### auth_login_flags
+
+```gdscript
+var auth_login_flags: int
+```
+
+Default login flags used when logging in with Epic Account Services. Defaults to `EOS.Auth.LoginFlags.None`.
+
+## Methods
+
+### login_devtool_async
+
+```gdscript
+func login_devtool_async(server_url: String, credential_name: String) -> bool
+```
+
+Login using the Epic Dev Auth tool.
+
+**Parameters:**
+- `server_url`: The URL of the dev auth server
+- `credential_name`: The credential name to use
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAuth.login_devtool_async("localhost:6547", "TestUser")
+if success:
+    print("Logged in as: ", HAuth.display_name)
+```
+
+Source: [hauth.gd:102](https://github.com/YOUR_REPO/hauth.gd#L102)
+
+### login_account_portal_async
+
+```gdscript
+func login_account_portal_async() -> bool
+```
+
+Login using Epic Account Portal. This opens a browser window for the user to log in.
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAuth.login_account_portal_async()
+```
+
+Source: [hauth.gd:116](https://github.com/YOUR_REPO/hauth.gd#L116)
+
+### login_launcher_async
+
+```gdscript
+func login_launcher_async() -> bool
+```
+
+Login using credentials provided by the Epic Games Launcher.
+
+To test this locally, provide the CLI argument `-AUTH_PASSWORD=<exchange_code>` when running your game:
+```bash
+godot4 . -AUTH_PASSWORD=1234
+```
+
+You can generate an exchange code using the DevAuthTool and accessing: `http://localhost:<PORT>/<credential_name>/exchange_code`
+
+**Returns:** `true` on success, `false` on failure
+
+Source: [hauth.gd:130](https://github.com/YOUR_REPO/hauth.gd#L130)
+
+### login_async
+
+```gdscript
+func login_async(opts: EOS.Auth.LoginOptions) -> bool
+```
+
+Login using EOS Auth by either using an Identity provider or Epic Games Account. This is the recommended way of logging in as you get access to Epic Account Services features: Friends, Presence, Social Overlay, ECom, etc.
+
+**Parameters:**
+- `opts`: EOS.Auth.LoginOptions object
+
+**Returns:** `true` on success, `false` on failure
+
+Source: [hauth.gd:152](https://github.com/YOUR_REPO/hauth.gd#L152)
+
+<Note>
+This is the recommended login method as it provides access to the full range of Epic Account Services features.
+</Note>
+
+### logout_async
+
+```gdscript
+func logout_async() -> EOS.Result
+```
+
+Logout from EOS Auth and/or EOS Connect.
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+var result = await HAuth.logout_async()
+if EOS.is_success(result):
+    print("Logged out successfully")
+```
+
+Source: [hauth.gd:200](https://github.com/YOUR_REPO/hauth.gd#L200)
+
+### login_game_services_async
+
+```gdscript
+func login_game_services_async(opts: EOS.Connect.LoginOptions) -> bool
+```
+
+Login with EOS Connect using external credentials. This provides access to Epic Game Services only.
+
+**Parameters:**
+- `opts`: EOS.Connect.LoginOptions object
+
+**Returns:** `true` on success, `false` on failure
+
+Source: [hauth.gd:249](https://github.com/YOUR_REPO/hauth.gd#L249)
+
+### login_persistent_auth_async
+
+```gdscript
+func login_persistent_auth_async() -> bool
+```
+
+Login automatically if an Epic refresh token is stored by a previous login with Epic Account Portal.
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAuth.login_persistent_auth_async()
+if not success:
+    # Fall back to another login method
+    await HAuth.login_account_portal_async()
+```
+
+Source: [hauth.gd:282](https://github.com/YOUR_REPO/hauth.gd#L282)
+
+### delete_persistent_auth_async
+
+```gdscript
+func delete_persistent_auth_async(refresh_token: String = "") -> bool
+```
+
+Delete the internally stored Epic refresh token.
+
+**Parameters:**
+- `refresh_token`: Optional refresh token to delete
+
+**Returns:** `true` on success, `false` on failure
+
+Source: [hauth.gd:294](https://github.com/YOUR_REPO/hauth.gd#L294)
+
+### login_anonymous_async
+
+```gdscript
+func login_anonymous_async(p_user_display_name: String) -> bool
+```
+
+Login to Epic Game Services without any credentials. You must provide a user display name.
+
+**Parameters:**
+- `p_user_display_name`: Display name for the anonymous user
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var success = await HAuth.login_anonymous_async("Guest123")
+```
+
+Source: [hauth.gd:310](https://github.com/YOUR_REPO/hauth.gd#L310)
+
+### get_user_info_async
+
+```gdscript
+func get_user_info_async(p_epic_account_id: String = epic_account_id) -> Dictionary
+```
+
+Get the user info from epic account id.
+
+**Parameters:**
+- `p_epic_account_id`: Epic account ID (defaults to current user)
+
+**Returns:** Dictionary with the following keys (or empty dictionary if error occurred):
+- `user_id: String`
+- `country: String`
+- `display_name: String`
+- `display_name_sanitized: String`
+- `preferred_language: String`
+- `nickname: String`
+
+Source: [hauth.gd:352](https://github.com/YOUR_REPO/hauth.gd#L352)
+
+### get_external_account_by_type_async
+
+```gdscript
+func get_external_account_by_type_async(p_external_account_type: EOS.ExternalAccountType, p_product_user_id: String = product_user_id) -> Dictionary
+```
+
+Get the external user account linked with Epic Game Services.
+
+**Parameters:**
+- `p_external_account_type`: Type of external account
+- `p_product_user_id`: Product user ID (defaults to current user)
+
+**Returns:** Dictionary with the following keys (or empty dictionary if error occurred):
+- `product_user_id: String` - the product user ID of the external account
+- `display_name: String` - external account display name or empty string
+- `account_id: String` - external account id
+- `account_id_type: EOS.ExternalAccountType` - type of external account
+- `last_login_time: int` - unix timestamp when the user last logged in or -1
+
+Source: [hauth.gd:384](https://github.com/YOUR_REPO/hauth.gd#L384)
+
+### get_external_accounts_async
+
+```gdscript
+func get_external_accounts_async(p_product_user_id: String = product_user_id) -> Array
+```
+
+Get all external accounts linked with Epic Games Services.
+
+**Parameters:**
+- `p_product_user_id`: Product user ID (defaults to current user)
+
+**Returns:** Array of dictionaries with same structure as [get_external_account_by_type_async](#get_external_account_by_type_async)
+
+Source: [hauth.gd:415](https://github.com/YOUR_REPO/hauth.gd#L415)
+
+### get_product_user_info_async
+
+```gdscript
+func get_product_user_info_async(p_product_user_id: String = product_user_id) -> Dictionary
+```
+
+Get the external account linked with Epic Game Services that the user most recently logged in with.
+
+**Parameters:**
+- `p_product_user_id`: Product user ID (defaults to current user)
+
+**Returns:** Dictionary with same structure as [get_external_account_by_type_async](#get_external_account_by_type_async)
+
+Source: [hauth.gd:449](https://github.com/YOUR_REPO/hauth.gd#L449)
+
+## Login Flow
+
+<Warning>
+MFA (Multi-Factor Authentication) is not supported by the EOS SDK. Use an account without MFA or use an alternative login method.
+</Warning>
+
+For more information about EOS login flows, see [Epic's official documentation](https://eoshelp.epicgames.com/s/article/What-is-the-correct-login-flow-for-a-game-that-supports-crossplay).
+
+## Best Practices
+
+1. **Use persistent auth**: Implement `login_persistent_auth_async()` to automatically log users in on subsequent sessions
+2. **Handle login errors**: Connect to the `login_error` signal to display appropriate error messages
+3. **Fetch external accounts**: Keep `auto_fetch_external_account` enabled to get user display names
+4. **Choose the right login method**: Use `login_async()` for full Epic Account Services features, or `login_game_services_async()` for game services only

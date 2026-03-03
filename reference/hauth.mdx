@@ -1,0 +1,495 @@
+---
+title: 'HAuth'
+description: 'Authentication and user management for Epic Online Services'
+---
+
+## Overview
+
+The `HAuth` class handles authentication for both Epic Account Services (EAS) and Epic Game Services (EGS). It supports multiple login methods including DevAuth Tool, Account Portal, Epic Games Launcher, persistent auth, and anonymous login.
+
+## Signals
+
+### logged_in
+
+Emitted when the user logs in to Epic Game Services. If the `auto_connect_account` option is false, this will also be emitted when the user logs in to Epic Account Services.
+
+```gdscript
+signal logged_in
+```
+
+### logged_out
+
+Emitted when the user logs out of Epic Game Services.
+
+```gdscript
+signal logged_out
+```
+
+### login_error
+
+Emitted when an error occurs while logging in.
+
+```gdscript
+signal login_error(result_code: EOS.Result)
+```
+
+### logged_in_auth
+
+Related to Epic Account Services.
+
+```gdscript
+signal logged_in_auth
+```
+
+### logged_out_auth
+
+Related to Epic Account Services.
+
+```gdscript
+signal logged_out_auth
+```
+
+### login_auth_error
+
+Related to Epic Account Services.
+
+```gdscript
+signal login_auth_error(result_code: EOS.Result)
+```
+
+### logged_in_connect
+
+Related to Epic Game Services.
+
+```gdscript
+signal logged_in_connect
+```
+
+### logged_out_connect
+
+Related to Epic Game Services.
+
+```gdscript
+signal logged_out_connect
+```
+
+### login_connect_error
+
+Related to Epic Game Services.
+
+```gdscript
+signal login_connect_error(result_code: EOS.Result)
+```
+
+### display_name_changed
+
+Emitted when the display name is changed. Get the display name using `HAuth.display_name`. When user logs in, this event will be emitted when we receive the user's display name. When user logs out, this event will be emitted as display name will be empty string.
+
+```gdscript
+signal display_name_changed
+```
+
+### external_account_info_changed
+
+Emitted when the external account info is changed. When user logs in, this event will be emitted when we receive the user's external account info. When user logs out, this event will be emitted as external account info will be empty.
+
+```gdscript
+signal external_account_info_changed
+```
+
+## Properties
+
+### epic_account_id
+
+```gdscript
+var epic_account_id: String
+```
+
+The epic account id of the logged in user (Used for Epic Account Services).
+
+### product_user_id
+
+```gdscript
+var product_user_id: String
+```
+
+The product user id of the logged in user (Used for Epic Game Services).
+
+### display_name
+
+```gdscript
+var display_name: String
+```
+
+The display name of the logged in user.
+
+### auto_fetch_external_account
+
+```gdscript
+var auto_fetch_external_account: bool = true
+```
+
+Whether to automatically fetch the external account linked with Epic Game Services (default true).
+
+### external_account_info
+
+```gdscript
+var external_account_info: Dictionary
+```
+
+The external account linked with Epic Game Services. See `get_external_account_by_type_async` for return type.
+
+### auto_link_account
+
+```gdscript
+var auto_link_account: bool = true
+```
+
+Whether to automatically link an epic account for external identity provider (default true).
+
+### auto_connect_account
+
+```gdscript
+var auto_connect_account: bool = true
+```
+
+Whether to automatically login to Epic Game Services after logging in to Epic Account Services (default true).
+
+### auth_login_scope_flags
+
+```gdscript
+var auth_login_scope_flags: int
+```
+
+Default scope flags used when logging in with Epic Account Services. Flags from `EOS.Auth.ScopeFlags`. Defaults to `EOS.Auth.ScopeFlags.BasicProfile | EOS.Auth.ScopeFlags.Presence | EOS.Auth.ScopeFlags.FriendsList`.
+
+### auth_login_flags
+
+```gdscript
+var auth_login_flags: int
+```
+
+Default login flags used when logging in with Epic Account Services. Flags from `EOS.Auth.LoginFlags`. Defaults to `EOS.Auth.LoginFlags.None`.
+
+## Methods
+
+### login_devtool_async
+
+```gdscript
+func login_devtool_async(server_url: String, credential_name: String) -> bool
+```
+
+Login using the Epic Dev Auth tool.
+
+<ParamField path="server_url" type="String" required>
+  URL of the Dev Auth Tool server (e.g., "localhost:6547")
+</ParamField>
+
+<ParamField path="credential_name" type="String" required>
+  The credential name configured in Dev Auth Tool
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.login_devtool_async("localhost:6547", "MyCredential")
+if success:
+    print("Logged in with DevAuth")
+```
+
+### login_account_portal_async
+
+```gdscript
+func login_account_portal_async() -> bool
+```
+
+Login using Epic Account Portal. This will open a browser window for the user to login.
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.login_account_portal_async()
+if success:
+    print("Logged in via Account Portal")
+```
+
+### login_launcher_async
+
+```gdscript
+func login_launcher_async() -> bool
+```
+
+Login using credentials provided by the Epic Games Launcher. To test this locally provide the cli argument `-AUTH_PASSWORD=<exchange_code>` when running your game like `godot4 . -AUTH_PASSWORD=1234`. You can generate an exchange code by using the DevAuthTool and accessing the following link on a browser: `http://localhost:<PORT>/<credential_name>/exchange_code`.
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.login_launcher_async()
+if success:
+    print("Logged in via Launcher")
+```
+
+### login_async
+
+```gdscript
+func login_async(opts: EOS.Auth.LoginOptions) -> bool
+```
+
+Login using EOS Auth by either using an Identity provider or Epic games Account. Allows you to use Epic Account Services: Friends, Presence, Social Overlay, ECom, etc. This is the recommended way of logging in as you get many additional features compared to `login_game_services_async`.
+
+<ParamField path="opts" type="EOS.Auth.LoginOptions" required>
+  Login options for Epic Account Services
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Auth.LoginOptions.new()
+opts.credentials = EOS.Auth.Credentials.new()
+opts.credentials.type = EOS.Auth.LoginCredentialType.AccountPortal
+opts.scope_flags = EOS.Auth.ScopeFlags.BasicProfile
+
+var success = await HAuth.login_async(opts)
+```
+
+### logout_async
+
+```gdscript
+func logout_async() -> EOS.Result
+```
+
+Logout from EOS Auth and or EOS Connect.
+
+<ResponseField name="return" type="EOS.Result">
+  Result code from the logout operation
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var result = await HAuth.logout_async()
+if EOS.is_success(result):
+    print("Logged out successfully")
+```
+
+### login_game_services_async
+
+```gdscript
+func login_game_services_async(opts: EOS.Connect.LoginOptions) -> bool
+```
+
+Login with EOS Connect by using external credentials.
+
+<ParamField path="opts" type="EOS.Connect.LoginOptions" required>
+  Login options for Epic Game Services
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var opts = EOS.Connect.LoginOptions.new()
+opts.credentials = EOS.Connect.Credentials.new()
+opts.credentials.type = EOS.ExternalCredentialType.Epic
+opts.credentials.token = "your_token"
+
+var success = await HAuth.login_game_services_async(opts)
+```
+
+### login_persistent_auth_async
+
+```gdscript
+func login_persistent_auth_async() -> bool
+```
+
+Login automatically if an Epic refresh token is stored by a previous login with Epic Account Portal.
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.login_persistent_auth_async()
+if success:
+    print("Logged in with persistent auth")
+```
+
+### delete_persistent_auth_async
+
+```gdscript
+func delete_persistent_auth_async(refresh_token: String = "") -> bool
+```
+
+Delete the internally stored Epic refresh token.
+
+<ParamField path="refresh_token" type="String" default="">
+  Optional refresh token to delete. If empty, deletes the current user's token
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if deletion was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.delete_persistent_auth_async()
+if success:
+    print("Persistent auth deleted")
+```
+
+### login_anonymous_async
+
+```gdscript
+func login_anonymous_async(p_user_display_name: String) -> bool
+```
+
+Login to Epic Game Services without any credentials. You must provide a user display name.
+
+<ParamField path="p_user_display_name" type="String" required>
+  Display name for the anonymous user
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if login was successful, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAuth.login_anonymous_async("Player123")
+if success:
+    print("Logged in anonymously")
+```
+
+### get_user_info_async
+
+```gdscript
+func get_user_info_async(p_epic_account_id: String = epic_account_id) -> Dictionary
+```
+
+Get the user info from epic account id.
+
+<ParamField path="p_epic_account_id" type="String" default="epic_account_id">
+  Epic Account ID to query. Defaults to the current user's ID
+</ParamField>
+
+<ResponseField name="return" type="Dictionary">
+  Returns a Dictionary with the following keys or empty dictionary if error occurred:
+  - `user_id`: String
+  - `country`: String
+  - `display_name`: String
+  - `display_name_sanitized`: String
+  - `preferred_language`: String
+  - `nickname`: String
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var user_info = await HAuth.get_user_info_async()
+if user_info:
+    print("Display name: ", user_info.display_name)
+```
+
+### get_external_account_by_type_async
+
+```gdscript
+func get_external_account_by_type_async(p_external_account_type: EOS.ExternalAccountType, p_product_user_id: String = product_user_id) -> Dictionary
+```
+
+Get the external user account linked with Epic Game Services.
+
+<ParamField path="p_external_account_type" type="EOS.ExternalAccountType" required>
+  Type of external account to query
+</ParamField>
+
+<ParamField path="p_product_user_id" type="String" default="product_user_id">
+  Product User ID to query. Defaults to the current user's ID
+</ParamField>
+
+<ResponseField name="return" type="Dictionary">
+  Returns a Dictionary with the following keys or empty dictionary if error occurred:
+  - `product_user_id`: String - the product user ID of the external account
+  - `display_name`: String - external account display name or empty string
+  - `account_id`: String - external account id
+  - `account_id_type`: EOS.ExternalAccountType - type of external account
+  - `last_login_time`: int - unix timestamp when the user last logged in or -1
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var ext_acc = await HAuth.get_external_account_by_type_async(EOS.ExternalAccountType.Epic)
+if ext_acc:
+    print("External account: ", ext_acc.display_name)
+```
+
+### get_external_accounts_async
+
+```gdscript
+func get_external_accounts_async(p_product_user_id: String = product_user_id) -> Array
+```
+
+Get all external accounts linked with Epic Games Services.
+
+<ParamField path="p_product_user_id" type="String" default="product_user_id">
+  Product User ID to query. Defaults to the current user's ID
+</ParamField>
+
+<ResponseField name="return" type="Array">
+  Returns an Array of Dictionary with same keys as `get_external_account_by_type_async`
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var accounts = await HAuth.get_external_accounts_async()
+for account in accounts:
+    print("Account: ", account.display_name)
+```
+
+### get_product_user_info_async
+
+```gdscript
+func get_product_user_info_async(p_product_user_id: String = product_user_id) -> Dictionary
+```
+
+Get the external account linked with Epic Game Services that the user most recently logged in with.
+
+<ParamField path="p_product_user_id" type="String" default="product_user_id">
+  Product User ID to query. Defaults to the current user's ID
+</ParamField>
+
+<ResponseField name="return" type="Dictionary">
+  Returns a Dictionary with same keys as `get_external_account_by_type_async`
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var product_info = await HAuth.get_product_user_info_async()
+if product_info:
+    print("Product user: ", product_info.display_name)
+```

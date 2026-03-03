@@ -1,0 +1,363 @@
+---
+title: macOS Setup
+description: Complete setup guide for Epic Online Services in Godot on macOS
+---
+
+## Overview
+
+Epic Online Services Godot (EOSG) supports macOS with full compatibility for both Intel and Apple Silicon Macs. This guide covers the setup process for developing and exporting your game on macOS.
+
+## Prerequisites
+
+- Godot Engine 4.2 or later
+- macOS development environment
+- Xcode command line tools (for debugging/building from source)
+- Epic Online Services credentials
+
+## Platform Support
+
+EOSG supports macOS with universal binary compatibility for:
+- **Apple Silicon (M1/M2/M3)**: arm64 architecture
+- **Intel Macs**: x86_64 architecture
+
+## Installation
+
+EOSG on macOS works the same way as other platforms. Follow the standard installation process:
+
+### Method 1: Install from Asset Library
+
+<Steps>
+
+<Step title="Open Asset Library">
+
+1. In the Godot editor, navigate to the **AssetLib** tab
+2. In the search bar, type `EOSG`
+
+</Step>
+
+<Step title="Download and install">
+
+1. Click on the plugin `Epic Online Services Godot (EOSG)` by `3ddelano`
+2. Click the **Download** button
+3. Once downloaded, click the **Install** button
+
+</Step>
+
+<Step title="Enable the plugin">
+
+1. Go to **Project → Project Settings → Plugins**
+2. Enable the `Epic Online Services Godot 4.2+ (EOSG)` plugin
+3. Restart the Godot editor
+
+</Step>
+
+</Steps>
+
+### Method 2: Install from GitHub
+
+<Steps>
+
+<Step title="Download the latest release">
+
+Go to the [Releases section](https://github.com/3ddelano/epic-online-services-godot/releases/latest) and download the latest release.
+
+</Step>
+
+<Step title="Extract and copy">
+
+1. Extract the zip file
+2. Copy the `addons/epic-online-services-godot` folder into the `res://addons/` folder of your project
+3. Create the `res://addons` folder if it doesn't exist
+
+</Step>
+
+<Step title="Enable the plugin">
+
+1. In the Godot editor, go to **Project → Project Settings → Plugins**
+2. Enable the `Epic Online Services Godot 4.2+ (EOSG)` plugin
+3. Restart the Godot editor
+
+</Step>
+
+</Steps>
+
+## Building from Source
+
+If you need to build the plugin from source for macOS:
+
+<Steps>
+
+<Step title="Clone the repository">
+
+```bash
+git clone https://github.com/3ddelano/epic-online-services-godot.git
+cd epic-online-services-godot
+```
+
+</Step>
+
+<Step title="Initialize submodules">
+
+```bash
+git submodule update --init --recursive
+```
+
+</Step>
+
+<Step title="Add the EOS SDK">
+
+1. Download the EOS C SDK from the [Epic Developer Portal](https://dev.epicgames.com/portal/sdk)
+2. Extract the downloaded zip
+3. Rename the extracted folder to `eos-sdk`
+4. Place it in the `thirdparty/` directory
+
+</Step>
+
+<Step title="Build for macOS (debug)">
+
+```bash
+scons platform=macos target=template_debug dev_build=yes
+```
+
+</Step>
+
+<Step title="Build for macOS (release)">
+
+```bash
+scons platform=macos target=template_release
+```
+
+</Step>
+
+<Step title="Locate the built library">
+
+The built GDExtension library will be in the `res://addons/epic-online-services-godot/bin/` folder.
+
+</Step>
+
+</Steps>
+
+## Debugging GDExtension on macOS
+
+If you encounter the error `Not allowed to attach to process` when trying to debug GDExtension on macOS using LLDB, you need to sign the Godot executable with debugging entitlements.
+
+<Steps>
+
+<Step title="Create debug entitlements file">
+
+Create a file named `debug-entitlements.plist` with the following content:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.get-task-allow</key>
+    <true/>
+</dict>
+</plist>
+```
+
+</Step>
+
+<Step title="Sign the Godot executable">
+
+Run the following command to sign the Godot app with debugging entitlements:
+
+```bash
+codesign --entitlements debug-entitlements.plist -f -s - /Applications/Godot.app/Contents/MacOS/Godot
+```
+
+<Note>
+Replace `/Applications/Godot.app/Contents/MacOS/Godot` with the actual path to your Godot executable if it's in a different location.
+</Note>
+
+</Step>
+
+<Step title="Verify and debug">
+
+You should now be able to attach LLDB to Godot and debug GDExtension code.
+
+</Step>
+
+</Steps>
+
+## Exporting Your Game
+
+<Steps>
+
+<Step title="Configure the export preset">
+
+1. In the Godot Editor, go to **Project → Export**
+2. Create a new macOS export preset
+3. Configure your export settings:
+   - App name and identifier
+   - Icon and copyright info
+   - Architecture (Universal for both Intel and Apple Silicon)
+   - Code signing settings (if applicable)
+
+</Step>
+
+<Step title="Export the project">
+
+1. Click **Export Project**
+2. Choose a destination and file name
+3. The export will create a `.app` bundle or `.dmg` file depending on your settings
+
+</Step>
+
+<Step title="Test the exported app">
+
+1. Navigate to the exported `.app` file
+2. Double-click to launch, or run from terminal:
+
+```bash
+open YourGame.app
+```
+
+</Step>
+
+</Steps>
+
+## Code Signing and Notarization
+
+For distribution outside the Mac App Store, you'll need to code sign and notarize your app:
+
+<Warning>
+Apps that aren't properly signed and notarized will show security warnings when users try to open them.
+</Warning>
+
+### Basic Code Signing
+
+1. Join the Apple Developer Program
+2. In Godot's macOS export preset, configure:
+   - **Codesign → Identity**: Your Developer ID Application certificate
+   - **Codesign → Entitlements**: Any required entitlements
+
+### Notarization
+
+For full distribution:
+
+1. Export your signed app
+2. Create a DMG or ZIP archive
+3. Submit to Apple for notarization using `xcrun notarytool`
+4. Staple the notarization ticket to your app
+
+See Apple's documentation for detailed notarization steps.
+
+## Cross-Platform Lobbies
+
+macOS builds work seamlessly with other platforms. Example cross-platform configurations:
+
+- macOS ↔ Windows
+- macOS ↔ iOS (great for testing)
+- macOS ↔ Linux
+- macOS ↔ Android
+
+**Example from development:**
+
+You can test cross-platform lobbies by:
+1. Running your game on macOS
+2. Running the same game on iOS Simulator (on the same Mac)
+3. Creating/joining lobbies between the two instances
+
+## Testing
+
+After setup:
+
+1. Launch the Godot Editor or your exported game
+2. Test EOS initialization with your credentials
+3. Test authentication (DevAuth Tool, Epic Account, etc.)
+4. Test multiplayer features
+5. Verify cross-platform connectivity (especially macOS ↔ iOS)
+
+## Troubleshooting
+
+### Cannot Attach Debugger
+
+**Problem**: LLDB fails with "Not allowed to attach to process"
+
+**Solution**: Sign the Godot executable with debug entitlements (see [Debugging section](#debugging-gdextension-on-macos) above).
+
+### App Won't Open (Security Warning)
+
+**Problem**: macOS shows "App can't be opened because it is from an unidentified developer"
+
+**Solutions**:
+- For development: Right-click the app → Open → Open (first time only)
+- For distribution: Properly code sign and notarize your app
+
+### EOS Initialization Fails
+
+**Problem**: EOS SDK fails to initialize
+
+**Solutions**:
+- Check that your EOS credentials are correct
+- Verify network connectivity
+- Review console output for specific error messages
+- Ensure the EOSG plugin is properly installed
+
+### Build Errors When Compiling from Source
+
+**Problem**: Compilation fails
+
+**Solutions**:
+- Install Xcode command line tools: `xcode-select --install`
+- Verify the EOS SDK is in the correct `thirdparty/eos-sdk` location
+- Check that submodules are initialized
+- Ensure you have the latest version of SCons
+
+### Exported App Crashes on Launch
+
+**Problem**: The exported app crashes immediately
+
+**Solutions**:
+- Check that you're exporting with the correct architecture
+- Verify all dependencies are included in the export
+- Test with a debug export to get crash logs
+- Check Console.app for crash reports
+
+### Cross-Platform Features Not Working
+
+**Problem**: Can't connect to lobbies from other platforms
+
+**Solutions**:
+- Verify network/firewall settings
+- Check that EOS credentials match across platforms
+- Ensure you're using the same EOS deployment
+- Test NAT traversal functionality
+
+### Performance Issues on Apple Silicon
+
+**Problem**: Game runs slower than expected on M1/M2/M3 Macs
+
+**Solutions**:
+- Ensure you're running a native arm64 build (not Rosetta)
+- Use release builds for better performance
+- Profile your game to identify bottlenecks
+- Check Activity Monitor for resource usage
+
+## Architecture Considerations
+
+### Universal Binaries
+
+For best compatibility, export universal binaries that support both:
+- **arm64**: Apple Silicon (M1/M2/M3)
+- **x86_64**: Intel Macs
+
+This ensures your game runs natively on all modern Macs.
+
+### Testing on Both Architectures
+
+If possible, test on both:
+- An Apple Silicon Mac (M1/M2/M3)
+- An Intel Mac
+
+Or use Rosetta 2 for basic compatibility testing.
+
+## Next Steps
+
+- [Configure EOS credentials](/getting-started/credentials)
+- [Implement authentication](/features/authentication)
+- [Test cross-platform lobbies with iOS](/features/lobbies)
+- [Set up voice chat](/features/voice)

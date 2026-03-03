@@ -1,0 +1,337 @@
+---
+title: Linux Setup
+description: Complete setup guide for Epic Online Services in Godot on Linux
+---
+
+## Overview
+
+Epic Online Services Godot (EOSG) supports Linux with both x64 and arm64 architectures. This guide covers the setup process for developing and exporting your game on Linux.
+
+## Prerequisites
+
+- Godot Engine 4.2 or later
+- Linux development environment (Ubuntu, Fedora, Arch, etc.)
+- Epic Online Services credentials
+- Build tools (if compiling from source)
+
+## Platform Support
+
+EOSG supports:
+- **Linux x64** (Intel/AMD 64-bit processors)
+- **Linux arm64** (ARM 64-bit processors, including Raspberry Pi 4+)
+
+## Installation
+
+EOSG on Linux works the same way as other platforms. Follow the standard installation process:
+
+### Method 1: Install from Asset Library
+
+<Steps>
+
+<Step title="Open Asset Library">
+
+1. In the Godot editor, navigate to the **AssetLib** tab
+2. In the search bar, type `EOSG`
+
+</Step>
+
+<Step title="Download and install">
+
+1. Click on the plugin `Epic Online Services Godot (EOSG)` by `3ddelano`
+2. Click the **Download** button
+3. Once downloaded, click the **Install** button
+
+</Step>
+
+<Step title="Enable the plugin">
+
+1. Go to **Project → Project Settings → Plugins**
+2. Enable the `Epic Online Services Godot 4.2+ (EOSG)` plugin
+3. Restart the Godot editor
+
+</Step>
+
+</Steps>
+
+### Method 2: Install from GitHub
+
+<Steps>
+
+<Step title="Download the latest release">
+
+Go to the [Releases section](https://github.com/3ddelano/epic-online-services-godot/releases/latest) and download the latest release.
+
+</Step>
+
+<Step title="Extract and copy">
+
+1. Extract the zip file
+2. Copy the `addons/epic-online-services-godot` folder into the `res://addons/` folder of your project
+3. Create the `res://addons` folder if it doesn't exist
+
+</Step>
+
+<Step title="Enable the plugin">
+
+1. In the Godot editor, go to **Project → Project Settings → Plugins**
+2. Enable the `Epic Online Services Godot 4.2+ (EOSG)` plugin
+3. Restart the Godot editor
+
+</Step>
+
+</Steps>
+
+## Building from Source
+
+If you need to build the plugin from source for Linux:
+
+<Steps>
+
+<Step title="Clone the repository">
+
+```bash
+git clone https://github.com/3ddelano/epic-online-services-godot.git
+cd epic-online-services-godot
+```
+
+</Step>
+
+<Step title="Initialize submodules">
+
+```bash
+git submodule update --init --recursive
+```
+
+</Step>
+
+<Step title="Add the EOS SDK">
+
+1. Download the EOS C SDK from the [Epic Developer Portal](https://dev.epicgames.com/portal/sdk)
+2. Extract the downloaded zip
+3. Rename the extracted folder to `eos-sdk`
+4. Place it in the `thirdparty/` directory
+
+</Step>
+
+<Step title="Build for Linux x64 (debug)">
+
+```bash
+scons platform=linux target=template_debug dev_build=yes
+```
+
+</Step>
+
+<Step title="Build for Linux x64 (release)">
+
+```bash
+scons platform=linux target=template_release
+```
+
+</Step>
+
+<Step title="Build for Linux arm64">
+
+For ARM64 architecture:
+
+```bash
+scons platform=linux arch=arm64 target=template_release
+```
+
+</Step>
+
+<Step title="Locate the built library">
+
+The built GDExtension library will be in the `res://addons/epic-online-services-godot/bin/` folder.
+
+</Step>
+
+</Steps>
+
+## Exporting Your Game
+
+<Steps>
+
+<Step title="Configure the export preset">
+
+1. In the Godot Editor, go to **Project → Export**
+2. Create a new Linux/X11 export preset
+3. Configure your export settings:
+   - Executable name
+   - Architecture (x86_64 or arm64)
+   - Embed PCK (recommended)
+   - Other settings as needed
+
+</Step>
+
+<Step title="Export the project">
+
+Click **Export Project** to create your Linux executable.
+
+</Step>
+
+<Step title="Set executable permissions">
+
+After exporting, make the binary executable:
+
+```bash
+chmod +x your_game_name.x86_64
+```
+
+Or for arm64:
+
+```bash
+chmod +x your_game_name.arm64
+```
+
+</Step>
+
+<Step title="Test the exported game">
+
+Run your game:
+
+```bash
+./your_game_name.x86_64
+```
+
+</Step>
+
+</Steps>
+
+## Architecture-Specific Notes
+
+### x64 (Intel/AMD)
+
+- Most common Linux gaming platform
+- Full support for all EOS features
+- Best performance on desktop and laptop systems
+
+### arm64 (ARM)
+
+- Supports ARM-based Linux systems
+- Compatible with devices like Raspberry Pi 4 and newer
+- Single-board computers and ARM servers
+- May have different performance characteristics
+
+## Development Environment
+
+### Required Libraries
+
+Ensure you have the necessary development libraries installed:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install build-essential scons pkg-config libx11-dev libxcursor-dev \
+    libxinerama-dev libgl1-mesa-dev libglu-dev libasound2-dev libpulse-dev \
+    libudev-dev libxi-dev libxrandr-dev
+```
+
+**Fedora:**
+```bash
+sudo dnf install gcc-c++ scons pkgconfig libX11-devel libXcursor-devel \
+    libXrandr-devel libXinerama-devel libXi-devel mesa-libGL-devel \
+    mesa-libGLU-devel alsa-lib-devel pulseaudio-libs-devel libudev-devel
+```
+
+**Arch:**
+```bash
+sudo pacman -S base-devel scons libxcursor libxinerama libxi libxrandr \
+    mesa glu alsa-lib pulseaudio
+```
+
+## Testing
+
+After setup:
+
+1. Launch the Godot Editor or your exported game
+2. Test EOS initialization with your credentials
+3. Test authentication (DevAuth Tool or other methods)
+4. Test multiplayer features if applicable
+5. Verify cross-platform connectivity
+
+## Cross-Platform Compatibility
+
+Linux builds can seamlessly connect with other platforms:
+
+- Linux ↔ Windows
+- Linux ↔ macOS
+- Linux ↔ Android
+- Linux ↔ iOS
+
+All EOS multiplayer features work cross-platform.
+
+## Troubleshooting
+
+### Missing Shared Libraries
+
+**Problem**: Game fails to launch with "cannot open shared object file" error
+
+**Solution**: Install the missing libraries using your distribution's package manager.
+
+### Permission Denied
+
+**Problem**: Cannot run the exported executable
+
+**Solution**: Make the file executable:
+```bash
+chmod +x your_game_name.x86_64
+```
+
+### EOS Initialization Fails
+
+**Problem**: EOS SDK fails to initialize
+
+**Solutions**:
+- Check that your EOS credentials are correct
+- Verify network connectivity
+- Review console output for specific error messages
+- Ensure the EOSG plugin is properly installed
+
+### Build Errors When Compiling from Source
+
+**Problem**: Compilation fails
+
+**Solutions**:
+- Ensure all development libraries are installed
+- Verify the EOS SDK is in the correct `thirdparty/eos-sdk` location
+- Check that submodules are initialized
+- Make sure you're using a compatible GCC/Clang version
+
+### Architecture Mismatch
+
+**Problem**: Binary won't run on target system
+
+**Solution**: Ensure you've built for the correct architecture:
+- Use `platform=linux` (defaults to x64) for Intel/AMD systems
+- Use `platform=linux arch=arm64` for ARM systems
+
+### Network Features Not Working
+
+**Problem**: P2P or multiplayer features don't work
+
+**Solutions**:
+- Check firewall settings (may need to allow the game through)
+- Verify network connectivity
+- Test with different network configurations
+- Check that NAT traversal is working properly
+
+## Performance Optimization
+
+### For Desktop Systems (x64)
+
+- Use release builds for best performance
+- Consider compiler optimizations if building from source
+- Profile your game to identify bottlenecks
+
+### For ARM Systems (arm64)
+
+- ARM processors may have different performance profiles
+- Test on actual hardware when possible
+- Consider thermal throttling on devices like Raspberry Pi
+- Optimize for power efficiency if needed
+
+## Next Steps
+
+- [Configure EOS credentials](/getting-started/credentials)
+- [Implement authentication](/features/authentication)
+- [Set up multiplayer](/features/lobbies)
+- [Test cross-platform play](/features/cross-platform)

@@ -1,0 +1,143 @@
+---
+title: Introduction
+description: The easiest way to integrate Epic Online Services into your Godot 4.2+ projects
+---
+
+# Epic Online Services Godot (EOSG)
+
+Epic Online Services Godot (EOSG) is the easiest way to integrate Epic Online Services into your Godot 4.2+ projects. This plugin wraps the Epic Online Services C SDK using GDExtension, making it seamlessly accessible through GDScript, C#, and other Godot-supported languages.
+
+<CardGroup cols={2}>
+  <Card title="Cross-Platform Support" icon="globe">
+    Deploy your game on Windows x64, Linux x64/arm64, Android x64/arm64, MacOS universal, and iOS arm64 (iPhone/simulator)
+  </Card>
+  <Card title="High Level API" icon="rocket">
+    Use the simplified High Level EOS API with easy-to-use methods and signals - perfect for beginners and rapid development
+  </Card>
+  <Card title="Full SDK Access" icon="code">
+    Access the complete Epic Online Services SDK through GDExtension for advanced use cases requiring fine-grained control
+  </Card>
+  <Card title="Rich Feature Set" icon="star">
+    Authentication, achievements, leaderboards, lobbies, P2P networking, voice chat, stats, metrics, and much more
+  </Card>
+</CardGroup>
+
+## Two Ways to Use EOS
+
+This plugin provides two interfaces for working with Epic Online Services:
+
+### High Level EOS (Recommended)
+
+The High Level Epic Online Services provides easy-to-use methods and signals to interact with EOS, making it ideal for beginners. This simplified API abstracts away many of the complexities of the EOS SDK while providing access to its core functionality.
+
+**Main Classes:**
+- `HPlatform` - Platform initialization and management
+- `HAuth` - User authentication and login flows
+- `HAchievements` - Achievement system
+- `HFriends` - Friends list and social features
+- `HStats` - Player statistics
+- `HLeaderboards` - Leaderboard management
+- `HLobbies` - Lobby and matchmaking
+- `HP2P` - Peer-to-peer networking
+- `HLog` - Logging utilities
+
+### GDExtension EOS
+
+The GDExtension EOS provides low-level access to the Epic Online Services SDK. This interface is not recommended for beginners but gives you full access to the underlying EOS functionality through the `EOS` and `IEOS` classes in Godot.
+
+## Feature Highlights
+
+<CardGroup cols={3}>
+  <Card title="Authentication" icon="key">
+    Multiple login methods including Epic Games, Steam, Discord, Device ID, Account Portal, and Anonymous
+  </Card>
+  <Card title="Social Features" icon="users">
+    Friends list, presence, social overlay (Windows), and custom invites
+  </Card>
+  <Card title="Progression" icon="chart-line">
+    Achievements, stats, leaderboards, and progression snapshots
+  </Card>
+  <Card title="Multiplayer" icon="network-wired">
+    Lobbies, sessions, P2P networking, and voice chat (RTC)
+  </Card>
+  <Card title="Data Storage" icon="database">
+    Player data storage and title data storage for cloud saves
+  </Card>
+  <Card title="Economy" icon="shopping-cart">
+    Ecommerce integration with Epic Games Store
+  </Card>
+  <Card title="Moderation" icon="shield">
+    Reports, sanctions, and anti-cheat (client and server)
+  </Card>
+  <Card title="Analytics" icon="chart-bar">
+    Metrics and analytics integration
+  </Card>
+  <Card title="Mods" icon="puzzle-piece">
+    Mod support and distribution
+  </Card>
+</CardGroup>
+
+## Quick Example
+
+Here's a basic example of using the High Level EOS API to initialize the platform and authenticate a user:
+
+```gdscript Main.gd
+extends Node
+
+func _ready() -> void:
+    # Setup HEOS Logs
+    HLog.log_level = HLog.LogLevel.INFO
+
+    var credentials = HCredentials.new()
+    credentials.product_name = "My Awesome Game"
+    credentials.product_version = "1.0"
+    credentials.product_id = "YOUR_PRODUCT_ID"
+    credentials.sandbox_id = "YOUR_SANDBOX_ID"
+    credentials.deployment_id = "YOUR_DEPLOYMENT_ID"
+    credentials.client_id = "YOUR_CLIENT_ID"
+    credentials.client_secret = "YOUR_CLIENT_SECRET"
+
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        printerr("Failed to setup EOS. See logs for more details")
+        return
+
+    HAuth.logged_in.connect(_on_logged_in)
+    
+    # Login anonymously for testing
+    await HAuth.login_anonymous_async()
+
+func _on_logged_in():
+    print("Logged in successfully: product_user_id=%s" % HAuth.product_user_id)
+    
+    # Example: Get top records for a leaderboard
+    var records := await HLeaderboards.get_leaderboard_records_async("YOUR_LEADERBOARD_ID")
+    print(records)
+```
+
+## Platform Support
+
+EOSG supports all major gaming platforms:
+
+| Platform | Architecture | Status |
+|----------|--------------|--------|
+| Windows | x64 | ✅ Supported |
+| Linux | x64, arm64 | ✅ Supported |
+| Android | x64, arm64 | ✅ Supported |
+| MacOS | Universal | ✅ Supported |
+| iOS | arm64 (Device + Simulator) | ✅ Supported |
+
+<Note>
+  This project is NOT affiliated with Epic Games Inc or Godot Engine. Make sure to review [Epic's Design Guidelines](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/DesignGuidelines/index.html) before releasing your game.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started by installing EOSG in your Godot project
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first "Hello EOS" example
+  </Card>
+</CardGroup>

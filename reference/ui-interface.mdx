@@ -1,0 +1,290 @@
+---
+title: UI Interface
+description: API reference for the EOS UI Interface in Godot
+---
+
+The UI Interface manages Epic Games Overlay interactions and social features.
+
+## Overview
+
+The UI Interface allows:
+
+- Showing/hiding the friends overlay
+- Displaying block and report player dialogs
+- Managing overlay settings and input
+- Configuring notification preferences
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### ui_interface_show_friends
+
+```gdscript
+IEOS.ui_interface_show_friends(options: RefCounted) -> void
+```
+
+Shows the Epic Games friends overlay.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ui_interface_show_friends_callback`
+
+### ui_interface_hide_friends
+
+```gdscript
+IEOS.ui_interface_hide_friends(options: RefCounted) -> void
+```
+
+Hides the Epic Games friends overlay.
+
+**Callback Signal:** `ui_interface_hide_friends_callback`
+
+### ui_interface_get_friends_visible
+
+```gdscript
+IEOS.ui_interface_get_friends_visible(options: RefCounted) -> bool
+```
+
+Checks if the friends overlay is currently visible.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+
+**Returns:** Boolean indicating visibility
+
+### ui_interface_get_friends_exclusive_input
+
+```gdscript
+IEOS.ui_interface_get_friends_exclusive_input(options: RefCounted) -> bool
+```
+
+Checks if the overlay has exclusive input focus.
+
+**Returns:** Boolean
+
+### ui_interface_show_block_player
+
+```gdscript
+IEOS.ui_interface_show_block_player(options: RefCounted) -> void
+```
+
+Shows the block player dialog.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Epic Account ID to block
+  - `client_data` - Optional user data
+
+**Callback Signal:** `ui_interface_show_block_player_callback`
+
+### ui_interface_show_report_player
+
+```gdscript
+IEOS.ui_interface_show_report_player(options: RefCounted) -> void
+```
+
+Shows the report player dialog.
+
+**Callback Signal:** `ui_interface_show_report_player_callback`
+
+### ui_interface_show_native_profile
+
+```gdscript
+IEOS.ui_interface_show_native_profile(options: RefCounted) -> void
+```
+
+Shows a user's native platform profile.
+
+**Callback Signal:** `ui_interface_show_native_profile_callback`
+
+### ui_interface_acknowledge_event_id
+
+```gdscript
+IEOS.ui_interface_acknowledge_event_id(options: RefCounted) -> int
+```
+
+Acknowledges a UI event.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `ui_event_id` - Event ID to acknowledge
+  - `result` - EOS_EResult value
+
+**Returns:** EOS_EResult
+
+### ui_interface_set_display_preference
+
+```gdscript
+IEOS.ui_interface_set_display_preference(options: RefCounted) -> int
+```
+
+Sets notification display preferences.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `notification_location` - EOS_UI_ENotificationLocation
+
+**Returns:** EOS_EResult
+
+### ui_interface_get_notification_location_preference
+
+```gdscript
+IEOS.ui_interface_get_notification_location_preference() -> int
+```
+
+Gets the current notification location preference.
+
+**Returns:** EOS_UI_ENotificationLocation
+
+### ui_interface_set_toggle_friends_key
+
+```gdscript
+IEOS.ui_interface_set_toggle_friends_key(options: RefCounted) -> int
+```
+
+Sets the keyboard shortcut to toggle the friends overlay.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `key_combination` - EOS_UI_EKeyCombination flags
+
+**Returns:** EOS_EResult
+
+### ui_interface_get_toggle_friends_key
+
+```gdscript
+IEOS.ui_interface_get_toggle_friends_key(options: RefCounted) -> int
+```
+
+Gets the current toggle friends key combination.
+
+**Returns:** EOS_UI_EKeyCombination flags
+
+### ui_interface_is_valid_key_combination
+
+```gdscript
+IEOS.ui_interface_is_valid_key_combination(key_combination: int) -> bool
+```
+
+Validates a key combination.
+
+**Returns:** Boolean
+
+### ui_interface_set_toggle_friends_button
+
+```gdscript
+IEOS.ui_interface_set_toggle_friends_button(options: RefCounted) -> int
+```
+
+Sets the gamepad button combination to toggle friends.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `button_combination` - EOS_UI_EInputStateButtonFlags
+
+**Returns:** EOS_EResult
+
+### ui_interface_get_toggle_friends_button
+
+```gdscript
+IEOS.ui_interface_get_toggle_friends_button(options: RefCounted) -> int
+```
+
+Gets the current toggle friends button combination.
+
+**Returns:** EOS_UI_EInputStateButtonFlags
+
+### ui_interface_is_valid_button_combination
+
+```gdscript
+IEOS.ui_interface_is_valid_button_combination(button_combination: int) -> bool
+```
+
+Validates a button combination.
+
+**Returns:** Boolean
+
+### ui_interface_report_input_state
+
+```gdscript
+IEOS.ui_interface_report_input_state(options: RefCounted) -> int
+```
+
+Reports input state to the overlay for gamepad navigation.
+
+**Parameters:**
+- `options` - Dictionary containing input state parameters
+
+**Returns:** EOS_EResult
+
+### ui_interface_pause_social_overlay
+
+```gdscript
+IEOS.ui_interface_pause_social_overlay(options: RefCounted) -> int
+```
+
+Pauses or resumes the social overlay.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `is_paused` - Boolean
+
+**Returns:** EOS_EResult
+
+### ui_interface_is_social_overlay_paused
+
+```gdscript
+IEOS.ui_interface_is_social_overlay_paused(options: RefCounted) -> bool
+```
+
+Checks if the social overlay is paused.
+
+**Returns:** Boolean
+
+### ui_interface_pre_present
+
+```gdscript
+IEOS.ui_interface_pre_present(options: RefCounted) -> int
+```
+
+Should be called before presenting each frame when using the overlay.
+
+**Returns:** EOS_EResult
+
+## Example Usage
+
+```gdscript
+# Show friends overlay
+var show_options = {
+    "local_user_id": epic_account_id
+}
+
+IEOS.ui_interface_show_friends_callback.connect(_on_overlay_shown)
+IEOS.ui_interface_show_friends(show_options)
+
+func _on_overlay_shown(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Friends overlay shown")
+
+# Show block player dialog
+var block_options = {
+    "local_user_id": epic_account_id,
+    "target_user_id": target_epic_id
+}
+IEOS.ui_interface_show_block_player(block_options)
+
+# Set notification location
+var result = IEOS.ui_interface_set_display_preference({
+    "notification_location": EOS_UI_ENotificationLocation.EOS_UNL_TopRight
+})
+```
+
+## See Also
+
+- [Friends Interface](/reference/friends-interface) - Friends list management

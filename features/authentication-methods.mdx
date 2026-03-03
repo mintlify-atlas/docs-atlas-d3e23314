@@ -1,0 +1,253 @@
+---
+title: Authentication methods
+description: Learn about the different authentication methods available in Epic Online Services Godot
+---
+
+Epic Online Services provides multiple authentication methods to suit different development and production scenarios. EOSG supports all authentication methods through the `HAuth` class for the High Level API or the Auth/Connect interfaces for the GDExtension API.
+
+## Epic Account Services vs Epic Game Services
+
+EOS has two authentication systems:
+
+- **Epic Account Services (Auth Interface)**: Full featured authentication with Epic Games accounts, social features, friends, presence, and overlay support
+- **Epic Game Services (Connect Interface)**: Lightweight authentication for product user IDs, suitable for games without Epic accounts
+
+Most games should use Epic Account Services for the complete feature set. The `HAuth` class automatically handles both systems.
+
+<CardGroup cols={2}>
+  <Card title="DevAuth Tool" icon="code" href="#devauth-tool">
+    For local development and testing
+  </Card>
+  <Card title="Account Portal" icon="browser" href="#account-portal">
+    For production with Epic accounts
+  </Card>
+  <Card title="Anonymous Login" icon="user-secret" href="#anonymous-login">
+    Quick testing without credentials
+  </Card>
+  <Card title="Custom Providers" icon="link" href="#custom-identity-providers">
+    Steam, Discord, and other platforms
+  </Card>
+</CardGroup>
+
+## DevAuth Tool
+
+The DevAuth Tool is designed for development and testing. It runs a local authentication server that simulates Epic's authentication without requiring real Epic accounts.
+
+<Steps>
+  <Step title="Download and run DevAuth Tool">
+    Download from [Epic Developer Portal](https://dev.epicgames.com/docs/services/en-US/DeveloperAuthenticationTool/index.html) and run it on `localhost:4545`
+  </Step>
+  <Step title="Create credentials">
+    In the DevAuth Tool, create test credentials with a username
+  </Step>
+  <Step title="Login with HAuth">
+    ```gdscript
+    await HAuth.login_devtool_async("localhost:4545", "CREDENTIAL_NAME_HERE")
+    ```
+  </Step>
+</Steps>
+
+### Example
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    HAuth.logged_in.connect(_on_logged_in)
+    HAuth.login_error.connect(_on_login_error)
+    
+    # Login using DevAuth tool
+    var success = await HAuth.login_devtool_async("localhost:4545", "MyTestUser")
+    if not success:
+        printerr("Failed to login")
+
+func _on_logged_in():
+    print("Logged in! Product User ID: %s" % HAuth.product_user_id)
+    print("Display name: %s" % HAuth.display_name)
+
+func _on_login_error(result_code):
+    printerr("Login error: %s" % EOS.result_str(result_code))
+```
+
+<Note>DevAuth Tool is for development only. Never use it in production builds.</Note>
+
+## Account Portal
+
+The Account Portal method opens a web browser for users to login with their Epic Games account. This is the recommended method for production games.
+
+### Requirements
+
+<Warning>
+On Windows, you must bootstrap your game executable with the EOS Redistributable Installer. See [Bootstrapping EOS](/guides/bootstrapping-eos) for details.
+</Warning>
+
+### Example
+
+```gdscript
+func login_with_account_portal():
+    HAuth.logged_in.connect(_on_logged_in)
+    
+    # Opens browser for Epic Games login
+    var success = await HAuth.login_account_portal_async()
+    if not success:
+        printerr("Failed to login with Account Portal")
+```
+
+## Epic Games Launcher
+
+If your game is launched through the Epic Games Launcher, you can use the launcher's authentication automatically.
+
+```gdscript
+func login_with_launcher():
+    # Reads -AUTH_PASSWORD=<exchange_code> from command line
+    var success = await HAuth.login_launcher_async()
+    if not success:
+        printerr("Failed to login with Launcher")
+```
+
+For local testing, generate an exchange code from DevAuth Tool:
+```
+http://localhost:4545/<credential_name>/exchange_code
+```
+
+Then run your game with:
+```bash
+godot4 . -AUTH_PASSWORD=<exchange_code>
+```
+
+## Anonymous Login
+
+Anonymous login creates a temporary account without requiring any user input. Perfect for mobile games or quick testing.
+
+```gdscript
+func login_anonymously():
+    var success = await HAuth.login_anonymous_async()
+    if not success:
+        printerr("Failed to login anonymously")
+```
+
+<Note>
+Anonymous accounts are device-specific. Users will have different accounts on different devices unless you implement account linking.
+</Note>
+
+## Persistent Auth
+
+Persistent auth stores the user's login session locally so they don't need to login every time they open your game.
+
+```gdscript
+func login_with_persistent_auth():
+    # First check if we have a stored session
+    var success = await HAuth.login_persistent_auth_async()
+    
+    if not success:
+        # No stored session, use another login method
+        success = await HAuth.login_account_portal_async()
+```
+
+<Tip>
+Always try persistent auth first to provide a seamless user experience.
+</Tip>
+
+## Custom Identity Providers
+
+You can authenticate users through external platforms like Steam, Discord, PlayStation Network, Xbox Live, and more.
+
+### Steam Authentication Example
+
+```gdscript
+func login_with_steam():
+    # Get Steam session ticket from Steamworks API
+    var steam_session_ticket = "..." # From Steam SDK
+    
+    var success = await HAuth.login_steam_async(steam_session_ticket)
+    if not success:
+        printerr("Failed to login with Steam")
+```
+
+### Device ID Authentication
+
+Great for mobile platforms where you want persistent anonymous accounts:
+
+```gdscript
+func login_with_device_id():
+    # Uses device-specific identifier
+    var device_model = OS.get_model_name()
+    var success = await HAuth.login_device_id_async(device_model)
+    if not success:
+        printerr("Failed to login with Device ID")
+```
+
+## Authentication Flow
+
+Here's a complete authentication flow that tries multiple methods:
+
+```gdscript
+func smart_login():
+    HAuth.logged_in.connect(_on_logged_in)
+    HAuth.login_error.connect(_on_login_error)
+    
+    # 1. Try persistent auth first
+    var success = await HAuth.login_persistent_auth_async()
+    if success:
+        return
+    
+    # 2. Check if launched from Epic Games Launcher
+    if OS.has_environment("EOS_AUTH_PASSWORD"):
+        success = await HAuth.login_launcher_async()
+        if success:
+            return
+    
+    # 3. Use DevAuth for development builds
+    if OS.is_debug_build():
+        success = await HAuth.login_devtool_async("localhost:4545", "TestUser")
+        if success:
+            return
+    
+    # 4. Fall back to Account Portal for production
+    success = await HAuth.login_account_portal_async()
+    if not success:
+        printerr("All login methods failed")
+```
+
+## Configuration Options
+
+Customize authentication behavior with `HAuth` properties:
+
+```gdscript
+func _ready():
+    # Auto-link external accounts to Epic accounts
+    HAuth.auto_link_account = true
+    
+    # Auto-connect to Epic Game Services after Epic Account Services login
+    HAuth.auto_connect_account = true
+    
+    # Automatically fetch external account info (Steam, etc.)
+    HAuth.auto_fetch_external_account = true
+    
+    # Request specific permissions (friends, presence)
+    HAuth.auth_login_scope_flags = EOS.Auth.ScopeFlags.BasicProfile | EOS.Auth.ScopeFlags.FriendsList | EOS.Auth.ScopeFlags.Presence
+```
+
+## Logout
+
+Always provide a logout option:
+
+```gdscript
+func logout():
+    var result = await HAuth.logout_async()
+    if EOS.is_success(result):
+        print("Logged out successfully")
+    else:
+        printerr("Logout failed: %s" % EOS.result_str(result))
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Concepts" icon="book" href="/concepts/authentication">
+    Deep dive into authentication architecture
+  </Card>
+  <Card title="HAuth API Reference" icon="code" href="/reference/hauth">
+    Complete API documentation
+  </Card>
+</CardGroup>

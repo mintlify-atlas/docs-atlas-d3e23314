@@ -1,0 +1,183 @@
+---
+title: Friends Interface
+description: API reference for the EOS Friends Interface in Godot
+---
+
+The Friends Interface manages Epic Games Social features, including friends lists, friend invites, and blocking users.
+
+## Overview
+
+The Friends Interface provides:
+
+- Friends list management
+- Friend invite system (send, accept, reject)
+- User blocking functionality
+- Friend status queries
+
+All methods are called on the `IEOS` singleton instance and use Epic Account IDs.
+
+## Methods
+
+### friends_interface_query_friends
+
+```gdscript
+IEOS.friends_interface_query_friends(options: RefCounted) -> void
+```
+
+Queries the friends list for a local user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `friends_interface_query_friends_callback`
+
+### friends_interface_get_friends_count
+
+```gdscript
+IEOS.friends_interface_get_friends_count(options: RefCounted) -> int
+```
+
+Returns the number of cached friends for a user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+
+**Returns:** Number of friends
+
+### friends_interface_get_friend_at_index
+
+```gdscript
+IEOS.friends_interface_get_friend_at_index(options: RefCounted) -> String
+```
+
+Gets a friend's Epic Account ID by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `index` - Friend index
+
+**Returns:** Friend's Epic Account ID
+
+### friends_interface_get_status
+
+```gdscript
+IEOS.friends_interface_get_status(options: RefCounted) -> int
+```
+
+Gets the friendship status between two users.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Target Epic Account ID
+
+**Returns:** EOS_EFriendsStatus value
+
+### friends_interface_send_invite
+
+```gdscript
+IEOS.friends_interface_send_invite(options: RefCounted) -> void
+```
+
+Sends a friend invite to another user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Target Epic Account ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `friends_interface_send_invite_callback`
+
+### friends_interface_accept_invite
+
+```gdscript
+IEOS.friends_interface_accept_invite(options: RefCounted) -> void
+```
+
+Accepts a friend invite from another user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `target_user_id` - Target Epic Account ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `friends_interface_accept_invite_callback`
+
+### friends_interface_reject_invite
+
+```gdscript
+IEOS.friends_interface_reject_invite(options: RefCounted) -> void
+```
+
+Rejects a friend invite from another user.
+
+**Callback Signal:** `friends_interface_reject_invite_callback`
+
+### friends_interface_get_blocked_users_count
+
+```gdscript
+IEOS.friends_interface_get_blocked_users_count(options: RefCounted) -> int
+```
+
+Returns the number of blocked users.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+
+**Returns:** Number of blocked users
+
+### friends_interface_get_blocked_user_at_index
+
+```gdscript
+IEOS.friends_interface_get_blocked_user_at_index(options: RefCounted) -> String
+```
+
+Gets a blocked user's Epic Account ID by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID
+  - `index` - Blocked user index
+
+**Returns:** Blocked user's Epic Account ID
+
+## Example Usage
+
+```gdscript
+# Query friends list
+var options = {
+    "local_user_id": epic_account_id
+}
+
+IEOS.friends_interface_query_friends_callback.connect(_on_friends_queried)
+IEOS.friends_interface_query_friends(options)
+
+func _on_friends_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var count = IEOS.friends_interface_get_friends_count({"local_user_id": epic_account_id})
+        for i in range(count):
+            var friend_id = IEOS.friends_interface_get_friend_at_index({
+                "local_user_id": epic_account_id,
+                "index": i
+            })
+            print("Friend: ", friend_id)
+
+# Send a friend invite
+var invite_options = {
+    "local_user_id": epic_account_id,
+    "target_user_id": target_epic_id
+}
+IEOS.friends_interface_send_invite(invite_options)
+```
+
+## See Also
+
+- [UserInfo Interface](/reference/userinfo-interface) - Query user display names
+- [Presence Interface](/reference/presence-interface) - Friend presence and status

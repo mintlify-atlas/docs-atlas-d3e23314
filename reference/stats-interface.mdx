@@ -1,0 +1,158 @@
+---
+title: Stats Interface
+description: API reference for the EOS Stats Interface in Godot
+---
+
+The Stats Interface manages player statistics, allowing you to track and update numerical game data for players.
+
+## Overview
+
+The Stats Interface provides:
+
+- Querying player statistics
+- Updating (ingesting) statistics
+- Retrieving cached stat data
+
+Statistics are used by leaderboards and can track any numerical game data.
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### stats_interface_query_stats
+
+```gdscript
+IEOS.stats_interface_query_stats(options: RefCounted) -> void
+```
+
+Queries player statistics from the backend.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID (optional)
+  - `target_user_id` - Product User ID to query
+  - `stat_names` - Array of stat name strings (optional, queries all if empty)
+  - `start_time` - Start time for time-based stats (optional)
+  - `end_time` - End time for time-based stats (optional)
+  - `client_data` - Optional user data
+
+**Callback Signal:** `stats_interface_query_stats_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `target_user_id` - Product User ID
+
+### stats_interface_ingest_stat
+
+```gdscript
+IEOS.stats_interface_ingest_stat(options: RefCounted) -> void
+```
+
+Updates one or more player statistics.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `target_user_id` - Product User ID to update
+  - `stats` - Array of stat Dictionaries:
+    - `stat_name` - Stat name string
+    - `ingest_amount` - Integer amount to add/set
+  - `client_data` - Optional user data
+
+**Callback Signal:** `stats_interface_ingest_stat_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `target_user_id` - Product User ID
+
+### stats_interface_get_stats_count
+
+```gdscript
+IEOS.stats_interface_get_stats_count(options: RefCounted) -> int
+```
+
+Returns the number of cached stats for a user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `target_user_id` - Product User ID
+
+**Returns:** Number of cached stats
+
+### stats_interface_copy_stat_by_index
+
+```gdscript
+IEOS.stats_interface_copy_stat_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies a stat by its cache index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `target_user_id` - Product User ID
+  - `stat_index` - Stat index
+
+**Returns:** Dictionary with `result_code` and `stat`
+
+### stats_interface_copy_stat_by_name
+
+```gdscript
+IEOS.stats_interface_copy_stat_by_name(options: RefCounted) -> Dictionary
+```
+
+Copies a stat by its name.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `target_user_id` - Product User ID
+  - `name` - Stat name string
+
+**Returns:** Dictionary with `result_code` and `stat`
+
+## Example Usage
+
+```gdscript
+# Ingest (update) player stats
+var stats_to_update = [
+    {"stat_name": "kills", "ingest_amount": 5},
+    {"stat_name": "deaths", "ingest_amount": 2},
+    {"stat_name": "score", "ingest_amount": 1500}
+]
+
+var ingest_options = {
+    "local_user_id": product_user_id,
+    "target_user_id": product_user_id,
+    "stats": stats_to_update
+}
+
+IEOS.stats_interface_ingest_stat_callback.connect(_on_stats_ingested)
+IEOS.stats_interface_ingest_stat(ingest_options)
+
+func _on_stats_ingested(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Stats updated successfully")
+
+# Query player stats
+var query_options = {
+    "target_user_id": product_user_id,
+    "stat_names": ["kills", "deaths", "score"]
+}
+
+IEOS.stats_interface_query_stats_callback.connect(_on_stats_queried)
+IEOS.stats_interface_query_stats(query_options)
+
+func _on_stats_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var kills_stat = IEOS.stats_interface_copy_stat_by_name({
+            "target_user_id": product_user_id,
+            "name": "kills"
+        })
+        print("Kills: ", kills_stat.stat)
+```
+
+## See Also
+
+- [Leaderboards Interface](/reference/leaderboards-interface) - Display ranked statistics
+- [Achievements Interface](/reference/achievements-interface) - Track achievement progress

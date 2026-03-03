@@ -1,0 +1,199 @@
+---
+title: Connect Interface
+description: API reference for the EOS Connect Interface in Godot
+---
+
+The Connect Interface handles Product User ID authentication and account management for Epic Online Services.
+
+## Overview
+
+The Connect Interface provides authentication for game services using Product User IDs. It supports:
+
+- Device ID authentication
+- External account linking
+- User ID mapping between Epic Accounts and Product Users
+- Account creation and management
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### connect_interface_login
+
+```gdscript
+IEOS.connect_interface_login(options: RefCounted) -> void
+```
+
+Logs in a user with external credentials or device ID to obtain a Product User ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `credentials` - Dictionary with:
+    - `type` - EOS_EExternalCredentialType
+    - `token` - Authentication token (use null for device ID)
+  - `user_login_info` - Optional user info Dictionary:
+    - `display_name` - User display name
+    - `nsa_id_token` - Nintendo NSA ID token
+
+**Callback Signal:** `connect_interface_login_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `continuance_token` - Token for account creation if needed
+- `success` - Boolean
+- `pending` - Boolean
+
+### connect_interface_logout
+
+```gdscript
+IEOS.connect_interface_logout(options: RefCounted) -> void
+```
+
+Logs out a Product User ID.
+
+**Callback Signal:** `connect_interface_logout_callback`
+
+### connect_interface_create_device_id
+
+```gdscript
+IEOS.connect_interface_create_device_id(options: RefCounted) -> void
+```
+
+Creates a device ID for device-based authentication.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `device_model` - Device model string
+
+**Callback Signal:** `connect_interface_create_device_id_callback`
+
+### connect_interface_delete_device_id
+
+```gdscript
+IEOS.connect_interface_delete_device_id(options: RefCounted) -> void
+```
+
+Deletes the device ID.
+
+**Callback Signal:** `connect_interface_delete_device_id_callback`
+
+### connect_interface_create_user
+
+```gdscript
+IEOS.connect_interface_create_user(options: RefCounted) -> void
+```
+
+Creates a new Product User account using a continuance token from login.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `continuance_token` - EOSGContinuanceToken from login callback
+
+**Callback Signal:** `connect_interface_create_user_callback`
+
+### connect_interface_link_account
+
+```gdscript
+IEOS.connect_interface_link_account(options: RefCounted) -> void
+```
+
+Links an external account to an existing Product User ID.
+
+**Callback Signal:** `connect_interface_link_account_callback`
+
+### connect_interface_copy_id_token
+
+```gdscript
+IEOS.connect_interface_copy_id_token(options: RefCounted) -> Dictionary
+```
+
+Retrieves the ID token for a Product User.
+
+**Returns:** Dictionary with `result_code` and `id_token`
+
+### connect_interface_get_logged_in_user_by_index
+
+```gdscript
+IEOS.connect_interface_get_logged_in_user_by_index(index: int) -> String
+```
+
+Gets the Product User ID at the specified index.
+
+**Returns:** Product User ID string
+
+### connect_interface_get_logged_in_users_count
+
+```gdscript
+IEOS.connect_interface_get_logged_in_users_count() -> int
+```
+
+Returns the number of logged-in Product Users.
+
+### connect_interface_get_login_status
+
+```gdscript
+IEOS.connect_interface_get_login_status(local_user_id: String) -> int
+```
+
+Gets the login status for the specified Product User.
+
+**Returns:** EOS_ELoginStatus value
+
+### connect_interface_query_external_account_mappings
+
+```gdscript
+IEOS.connect_interface_query_external_account_mappings(options: RefCounted) -> void
+```
+
+Queries mappings between external account IDs and Product User IDs.
+
+**Callback Signal:** `connect_interface_query_external_account_mappings_callback`
+
+### connect_interface_query_product_user_id_mappings
+
+```gdscript
+IEOS.connect_interface_query_product_user_id_mappings(options: RefCounted) -> void
+```
+
+Queries external account information for Product User IDs.
+
+**Callback Signal:** `connect_interface_query_product_user_id_mappings_callback`
+
+### connect_interface_transfer_device_id_account
+
+```gdscript
+IEOS.connect_interface_transfer_device_id_account(options: RefCounted) -> void
+```
+
+Transfers a device ID account to another Product User ID.
+
+**Callback Signal:** `connect_interface_transfer_device_id_account_callback`
+
+## Example Usage
+
+```gdscript
+# Device ID login
+var credentials = {
+    "type": EOS_EExternalCredentialType.EOS_ECT_DEVICEID_ACCESS_TOKEN
+}
+
+var options = {
+    "credentials": credentials
+}
+
+IEOS.connect_interface_login_callback.connect(_on_connect_login)
+IEOS.connect_interface_login(options)
+
+func _on_connect_login(data: Dictionary):
+    if data.success:
+        print("Product User ID: ", data.local_user_id)
+    elif data.continuance_token:
+        # Need to create new account
+        var create_options = {"continuance_token": data.continuance_token}
+        IEOS.connect_interface_create_user(create_options)
+```
+
+## See Also
+
+- [Auth Interface](/reference/auth-interface) - Epic Account authentication

@@ -1,0 +1,181 @@
+---
+title: 'HLog'
+description: 'Logging utility for HEOS classes'
+---
+
+## Overview
+
+The `HLog` class provides logging functionality for HEOS classes. It allows you to control the verbosity of internal HEOS logging separately from EOS SDK logging.
+
+<Note>
+  `HLog` is used internally by HEOS classes. For EOS SDK logging, see `EOS.Logging`.
+</Note>
+
+## Enumerations
+
+### LogLevel
+
+Available log levels for HEOS logging.
+
+```gdscript
+enum LogLevel {
+    OFF,      # No logging
+    ERROR,    # Only errors
+    WARN,     # Warnings and errors
+    INFO,     # Informational messages, warnings, and errors
+    DEBUG,    # Debug messages and above
+    VERBOSE,  # All messages including verbose details
+}
+```
+
+## Properties
+
+### log_level
+
+```gdscript
+static var log_level: LogLevel = LogLevel.INFO
+```
+
+Current log level for all HEOS logging. Set this to control the verbosity of HEOS internal logging.
+
+**Example:**
+
+```gdscript
+# Set to verbose for detailed debugging
+HLog.log_level = HLog.LogLevel.VERBOSE
+
+# Set to error for production (minimal logging)
+HLog.log_level = HLog.LogLevel.ERROR
+
+# Disable all HEOS logging
+HLog.log_level = HLog.LogLevel.OFF
+```
+
+## Methods
+
+### logger
+
+```gdscript
+static func logger(clazz_name: String) -> HEOSLogger
+```
+
+Returns a new logger for the given class name. This is used internally by HEOS classes.
+
+<ParamField path="clazz_name" type="String" required>
+  The name of the class using the logger
+</ParamField>
+
+<ResponseField name="return" type="HEOSLogger">
+  A logger instance for the specified class
+</ResponseField>
+
+**Example:**
+
+```gdscript
+# Used internally by HEOS classes
+var _log = HLog.logger("MyClass")
+_log.info("This is an info message")
+_log.debug("This is a debug message")
+_log.error("This is an error message")
+```
+
+## HEOSLogger Class
+
+The internal logger class used by HEOS classes.
+
+### Methods
+
+#### verbose
+
+```gdscript
+func verbose(msg: String) -> void
+```
+
+Log a verbose message (only shown when log_level is VERBOSE).
+
+#### debug
+
+```gdscript
+func debug(msg: String) -> void
+```
+
+Log a debug message (shown when log_level is DEBUG or VERBOSE).
+
+#### info
+
+```gdscript
+func info(msg: String) -> void
+```
+
+Log an informational message (shown when log_level is INFO, DEBUG, or VERBOSE).
+
+#### warn
+
+```gdscript
+func warn(msg: String) -> void
+```
+
+Log a warning message (shown when log_level is WARN, INFO, DEBUG, or VERBOSE).
+
+#### error
+
+```gdscript
+func error(msg: String) -> void
+```
+
+Log an error message (shown when log_level is ERROR, WARN, INFO, DEBUG, or VERBOSE).
+
+## Usage Examples
+
+### Basic Configuration
+
+```gdscript
+# In your game's initialization code
+func _ready():
+    # Set log level based on build type
+    if OS.is_debug_build():
+        HLog.log_level = HLog.LogLevel.DEBUG
+    else:
+        HLog.log_level = HLog.LogLevel.WARN
+```
+
+### Runtime Log Level Control
+
+```gdscript
+# Toggle verbose logging with a debug command
+func toggle_verbose_logging():
+    if HLog.log_level == HLog.LogLevel.VERBOSE:
+        HLog.log_level = HLog.LogLevel.INFO
+        print("Verbose logging disabled")
+    else:
+        HLog.log_level = HLog.LogLevel.VERBOSE
+        print("Verbose logging enabled")
+```
+
+### Log Level Settings UI
+
+```gdscript
+# Example debug menu for controlling log levels
+func _on_log_level_selected(index: int):
+    match index:
+        0:
+            HLog.log_level = HLog.LogLevel.OFF
+        1:
+            HLog.log_level = HLog.LogLevel.ERROR
+        2:
+            HLog.log_level = HLog.LogLevel.WARN
+        3:
+            HLog.log_level = HLog.LogLevel.INFO
+        4:
+            HLog.log_level = HLog.LogLevel.DEBUG
+        5:
+            HLog.log_level = HLog.LogLevel.VERBOSE
+```
+
+<Tip>
+  Set `HLog.log_level` to `HLog.LogLevel.VERBOSE` when debugging authentication or connection issues to see detailed internal HEOS logging.
+</Tip>
+
+<Warning>
+  VERBOSE logging can produce a large amount of output. Use it only for debugging and disable it in production builds.
+</Warning>

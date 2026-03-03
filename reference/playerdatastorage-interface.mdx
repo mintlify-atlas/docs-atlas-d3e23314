@@ -1,0 +1,268 @@
+---
+title: PlayerDataStorage Interface
+description: API reference for the EOS PlayerDataStorage Interface in Godot
+---
+
+The PlayerDataStorage Interface provides cloud storage for player-specific data.
+
+## Overview
+
+The PlayerDataStorage Interface allows:
+
+- Uploading player save files to the cloud
+- Downloading player save files
+- Querying file metadata
+- Managing file lifecycle (duplicate, delete)
+- Cache management
+
+All methods are called on the `IEOS` singleton instance and use Product User IDs.
+
+## Methods
+
+### playerdatastorage_interface_query_file
+
+```gdscript
+IEOS.playerdatastorage_interface_query_file(options: RefCounted) -> void
+```
+
+Queries metadata for a specific file.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+  - `client_data` - Optional user data
+
+**Callback Signal:** `playerdatastorage_interface_query_file_callback`
+
+### playerdatastorage_interface_query_file_list
+
+```gdscript
+IEOS.playerdatastorage_interface_query_file_list(options: RefCounted) -> void
+```
+
+Queries the list of files for a player.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `playerdatastorage_interface_query_file_list_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `file_count` - Number of files
+
+### playerdatastorage_interface_read_file
+
+```gdscript
+IEOS.playerdatastorage_interface_read_file(options: RefCounted) -> Variant
+```
+
+Reads a file from cloud storage.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+  - `read_chunk_length_bytes` - Chunk size for reading
+  - `client_data` - Optional user data
+
+**Returns:** EOSGFileTransferRequest object
+
+**Signals:**
+- `playerdatastorage_interface_read_file_data_callback` - Called for each data chunk
+- `playerdatastorage_interface_file_transfer_progress_callback` - Progress updates
+- `playerdatastorage_interface_read_file_callback` - Called when complete
+
+### playerdatastorage_interface_write_file
+
+```gdscript
+IEOS.playerdatastorage_interface_write_file(options: RefCounted) -> Variant
+```
+
+Writes a file to cloud storage.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+  - `data` - PackedByteArray of file data
+  - `chunk_length_bytes` - Chunk size for writing
+  - `client_data` - Optional user data
+
+**Returns:** EOSGFileTransferRequest object
+
+**Signals:**
+- `playerdatastorage_interface_write_file_data_callback` - Called for each chunk
+- `playerdatastorage_interface_file_transfer_progress_callback` - Progress updates
+- `playerdatastorage_interface_write_file_callback` - Called when complete
+
+### playerdatastorage_interface_delete_file
+
+```gdscript
+IEOS.playerdatastorage_interface_delete_file(options: RefCounted) -> void
+```
+
+Deletes a file from cloud storage.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+  - `client_data` - Optional user data
+
+**Callback Signal:** `playerdatastorage_interface_delete_file_callback`
+
+### playerdatastorage_interface_duplicate_file
+
+```gdscript
+IEOS.playerdatastorage_interface_duplicate_file(options: RefCounted) -> void
+```
+
+Duplicates a file in cloud storage.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `source_filename` - Source filename
+  - `destination_filename` - Destination filename
+  - `client_data` - Optional user data
+
+**Callback Signal:** `playerdatastorage_interface_duplicate_file_callback`
+
+### playerdatastorage_interface_get_file_metadata_count
+
+```gdscript
+IEOS.playerdatastorage_interface_get_file_metadata_count(options: RefCounted) -> Dictionary
+```
+
+Gets the count of cached file metadata.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+
+**Returns:** Dictionary with `result_code` and `file_metadata_count`
+
+### playerdatastorage_interface_copy_file_metadata_by_filename
+
+```gdscript
+IEOS.playerdatastorage_interface_copy_file_metadata_by_filename(options: RefCounted) -> Dictionary
+```
+
+Copies file metadata by filename.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+
+**Returns:** Dictionary with `result_code` and `metadata`
+
+### playerdatastorage_interface_copy_file_metadata_at_index
+
+```gdscript
+IEOS.playerdatastorage_interface_copy_file_metadata_at_index(options: RefCounted) -> Dictionary
+```
+
+Copies file metadata by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `index` - File index
+
+**Returns:** Dictionary with `result_code` and `metadata`
+
+### playerdatastorage_interface_delete_cache
+
+```gdscript
+IEOS.playerdatastorage_interface_delete_cache(options: RefCounted) -> int
+```
+
+Deletes locally cached files.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `client_data` - Optional user data
+
+**Returns:** EOS_EResult
+
+**Callback Signal:** `playerdatastorage_interface_delete_cache_callback`
+
+## Example Usage
+
+```gdscript
+# Write save file to cloud
+var save_data = "Player save data...".to_utf8_buffer()
+
+var write_options = {
+    "local_user_id": product_user_id,
+    "filename": "savegame.dat",
+    "data": save_data,
+    "chunk_length_bytes": 4096
+}
+
+IEOS.playerdatastorage_interface_write_file_callback.connect(_on_file_written)
+var transfer_request = IEOS.playerdatastorage_interface_write_file(write_options)
+
+func _on_file_written(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("File saved to cloud: ", data.filename)
+
+# Read save file from cloud
+var read_options = {
+    "local_user_id": product_user_id,
+    "filename": "savegame.dat",
+    "read_chunk_length_bytes": 4096
+}
+
+var file_data = PackedByteArray()
+
+IEOS.playerdatastorage_interface_read_file_data_callback.connect(_on_data_chunk)
+IEOS.playerdatastorage_interface_read_file_callback.connect(_on_file_read)
+
+var read_request = IEOS.playerdatastorage_interface_read_file(read_options)
+
+func _on_data_chunk(data: Dictionary):
+    file_data.append_array(data.data_chunk)
+
+func _on_file_read(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("File loaded: ", file_data.get_string_from_utf8())
+
+# Query file list
+var query_options = {
+    "local_user_id": product_user_id
+}
+
+IEOS.playerdatastorage_interface_query_file_list_callback.connect(_on_files_queried)
+IEOS.playerdatastorage_interface_query_file_list(query_options)
+
+func _on_files_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var count_result = IEOS.playerdatastorage_interface_get_file_metadata_count({
+            "local_user_id": product_user_id
+        })
+        for i in range(count_result.file_metadata_count):
+            var metadata = IEOS.playerdatastorage_interface_copy_file_metadata_at_index({
+                "local_user_id": product_user_id,
+                "index": i
+            })
+            print("File: ", metadata.metadata)
+```
+
+## Notes
+
+- Files are encrypted and stored securely in Epic's cloud
+- Maximum file size is configurable in the Developer Portal
+- Files are per-player and not shared between users
+- Use TitleStorage Interface for game-wide data
+
+## See Also
+
+- [TitleStorage Interface](/reference/titlestorage-interface) - Cloud storage for game-wide data

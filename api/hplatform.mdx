@@ -1,0 +1,245 @@
+---
+title: HPlatform
+description: Initialize and manage the Epic Online Services platform
+---
+
+## Overview
+
+HPlatform is responsible for initializing the EOS SDK and creating the EOS platform instance. This is the first component you need to set up before using any other EOS features.
+
+## Signals
+
+### platform_initialized
+
+```gdscript
+signal platform_initialized
+```
+
+Emitted when the EOS platform was initialized successfully.
+
+### platform_created
+
+```gdscript
+signal platform_created
+```
+
+Emitted when the EOS platform was created successfully.
+
+### log_msg
+
+```gdscript
+signal log_msg(msg: EOS.Logging.LogMessage)
+```
+
+Emitted when the EOS SDK produces a log message. Use this signal to handle logs however you want.
+
+## Properties
+
+### cache_directory
+
+```gdscript
+var cache_directory: String
+```
+
+Absolute path to the folder used for caching temporary data. Defaults to `ProjectSettings.globalize_path("user://eosg-cache")`.
+
+### flags
+
+```gdscript
+var flags: int = 0
+```
+
+Platform creation flags. This is a bitwise union of `EOS.Platform.PlatformFlags`.
+
+### is_server
+
+```gdscript
+var is_server: bool
+```
+
+Set to true if this is a dedicated game server.
+
+### override_country_code
+
+```gdscript
+var override_country_code: String
+```
+
+Override country code for the logged-in user.
+
+### override_locale_code
+
+```gdscript
+var override_locale_code: String
+```
+
+Override locale code for the logged-in user.
+
+### tick_budget_in_milliseconds
+
+```gdscript
+var tick_budget_in_milliseconds: int
+```
+
+Budget in milliseconds for `EOS_Platform_Tick` to do its work. Set it according to your desired FPS.
+
+### task_network_timeout_seconds
+
+```gdscript
+var task_network_timeout_seconds: float
+```
+
+Number of seconds for a task to wait for the network to become available before timing out with an `EOS_TimedOut` error.
+
+### rtc_options_background_mode
+
+```gdscript
+var rtc_options_background_mode: EOS.Platform.RTCBackgroundMode
+```
+
+Configures RTC behavior upon entering any background application statuses.
+
+## Methods
+
+### setup_eos_async
+
+```gdscript
+func setup_eos_async(p_creds: HCredentials) -> bool
+```
+
+Easy setup for EOS. Returns `true` if EOS setup is successful.
+
+**Parameters:**
+- `p_creds`: [HCredentials](/api/hplatform#hcredentials) object containing your Epic Games credentials
+
+**Returns:** `true` on success, `false` on failure
+
+**Example:**
+```gdscript
+var creds = HCredentials.new()
+creds.product_name = "My Game"
+creds.product_version = "1.0"
+creds.product_id = "YOUR_PRODUCT_ID"
+creds.sandbox_id = "YOUR_SANDBOX_ID"
+creds.deployment_id = "YOUR_DEPLOYMENT_ID"
+creds.client_id = "YOUR_CLIENT_ID"
+creds.client_secret = "YOUR_CLIENT_SECRET"
+
+var success = await HPlatform.setup_eos_async(creds)
+if success:
+    print("EOS initialized successfully!")
+```
+
+<Note>
+This method automatically retries initialization and platform creation if they fail. It combines both `initialize_async()` and `create_platform_async()` calls.
+</Note>
+
+### initialize_async
+
+```gdscript
+func initialize_async(opts: EOS.Platform.InitializeOptions) -> EOS.Result
+```
+
+Initialize the EOS SDK. This method automatically retries up to 10 times with 0.2 second delays.
+
+**Parameters:**
+- `opts`: EOS.Platform.InitializeOptions object
+
+**Returns:** EOS.Result code
+
+Source: [hplatform.gd:126](https://github.com/YOUR_REPO/hplatform.gd#L126)
+
+### set_eos_log_level
+
+```gdscript
+func set_eos_log_level(log_category: EOS.Logging.LogCategory, log_level: EOS.Logging.LogLevel) -> EOS.Result
+```
+
+Set the logging level for the EOS SDK.
+
+**Parameters:**
+- `log_category`: The log category to configure
+- `log_level`: The log level to set
+
+**Returns:** EOS.Result code
+
+**Example:**
+```gdscript
+HPlatform.set_eos_log_level(EOS.Logging.LogCategory.AllCategories, EOS.Logging.LogLevel.Info)
+```
+
+Source: [hplatform.gd:152](https://github.com/YOUR_REPO/hplatform.gd#L152)
+
+### create_platform_async
+
+```gdscript
+func create_platform_async(opts: EOS.Platform.CreateOptions) -> bool
+```
+
+Create the EOS Platform. This method automatically retries up to 10 times with 0.2 second delays.
+
+**Parameters:**
+- `opts`: EOS.Platform.CreateOptions object
+
+**Returns:** EOS.Result code
+
+Source: [hplatform.gd:163](https://github.com/YOUR_REPO/hplatform.gd#L163)
+
+## Constants
+
+### INITIALIZE_RETRY_COUNT
+
+```gdscript
+const INITIALIZE_RETRY_COUNT = 10
+```
+
+Number of times to retry initializing the EOS SDK.
+
+### INITIALIZE_RETRY_DELAY_SEC
+
+```gdscript
+const INITIALIZE_RETRY_DElAY_SEC = 0.2
+```
+
+Delay between retries initializing the EOS SDK in seconds.
+
+### CREATE_RETRY_COUNT
+
+```gdscript
+const CREATE_RETRY_COUNT = 10
+```
+
+Number of times to retry creating the EOS platform.
+
+### CREATE_RETRY_DELAY_SEC
+
+```gdscript
+const CREATE_RETRY_DElAY_SEC = 0.2
+```
+
+Delay between retries creating the EOS platform in seconds.
+
+## HCredentials
+
+Credentials required by Epic Online Services. Get these values from the [Dev Portal](https://dev.epicgames.com/portal/en-US/).
+
+### Properties
+
+- `product_name: String` - Game name (max 64 characters), e.g., "My Awesome Game"
+- `product_version: String` - Game version, e.g., "1.0"
+- `product_id: String` - Product ID of the game, provided by Epic Games
+- `sandbox_id: String` - Sandbox ID of the game, provided by Epic Games
+- `deployment_id: String` - Deployment ID of the game, provided by Epic Games
+- `client_id: String` - Client ID to use for the game, provided by Epic Games
+- `client_secret: String` - Client Secret to use for the game, provided by Epic Games
+- `encryption_key: String` - (Optional) 256-bit Encryption Key for file encryption in hexadecimal format (64 hex characters)
+
+## Best Practices
+
+<Warning>
+Always initialize the platform before attempting to use any other EOS features. The platform must be created successfully before you can authenticate users or use other services.
+</Warning>
+
+1. **Set appropriate tick budget**: Configure `tick_budget_in_milliseconds` based on your target FPS to ensure EOS has enough time to process events
+2. **Handle log messages**: Connect to the `log_msg` signal to capture EOS SDK logs for debugging
+3. **Use setup_eos_async**: For most cases, use `setup_eos_async()` instead of manually calling `initialize_async()` and `create_platform_async()`

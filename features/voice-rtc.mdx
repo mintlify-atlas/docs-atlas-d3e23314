@@ -1,0 +1,450 @@
+---
+title: Voice chat (RTC)
+description: Implement real-time voice communication with Epic Online Services RTC
+---
+
+Epic Online Services provides real-time communication (RTC) features including voice chat, RTC data channels, and audio management. EOSG integrates RTC through lobby systems and low-level interfaces.
+
+## Overview
+
+EOS RTC features:
+- **Voice Chat**: Real-time voice communication between players
+- **Data Channels**: Low-latency data transmission alongside voice
+- **Audio Device Management**: Control input/output devices
+- **Participant Management**: Mute, unmute, and manage speaking participants
+- **Automatic Integration**: Works seamlessly with lobbies
+
+<Note>
+RTC is automatically available when using lobbies. For custom implementations, use the RTC interfaces directly.
+</Note>
+
+## Voice Chat in Lobbies
+
+The simplest way to add voice chat is through lobbies, which handle RTC setup automatically.
+
+### Enable Voice in Lobby
+
+```gdscript
+func create_lobby_with_voice():
+    # Configure RTC options before creating/joining lobby
+    HLobbies.local_rtc_options = {
+        flags = EOS.RTC.JoinRoomFlags.EnableDataChannel,
+        use_manual_audio_input = false,  # Automatic audio capture
+        use_manual_audio_output = false,  # Automatic audio playback
+        local_audio_device_input_starts_muted = false  # Start unmuted
+    }
+    
+    # Create lobby (voice is automatically enabled)
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+    opts.enable_rtc_room = true  # Enable RTC room
+    
+    var lobby = await HLobbies.create_lobby_async(opts)
+    if lobby:
+        print("Lobby created with voice chat enabled!")
+        setup_voice_controls(lobby)
+```
+
+### Mute/Unmute Local Audio
+
+```gdscript
+var is_muted = false
+
+func toggle_mute(lobby: HLobby):
+    is_muted = not is_muted
+    
+    var opts = EOS.RTCAudio.UpdateSendingOptions.new()
+    opts.room_name = lobby.lobby_id
+    opts.audio_status = EOS.RTCAudio.Status.Disabled if is_muted else EOS.RTCAudio.Status.Enabled
+    
+    var result = EOS.RTCAudio.RTCAudioInterface.update_sending(opts)
+    if EOS.is_success(result):
+        print("Microphone %s" % ("muted" if is_muted else "unmuted"))
+```
+
+### Get Speaking Participants
+
+```gdscript
+func update_speaking_indicators(lobby: HLobby):
+    # Get list of participants currently speaking
+    var speaking = lobby.get_rtc_speaking_participants()
+    
+    for participant_id in speaking:
+        # Show speaking indicator in UI
+        show_speaking_icon(participant_id)
+    
+    # Clear indicators for non-speaking players
+    for member in lobby.get_members():
+        if member.product_user_id not in speaking:
+            hide_speaking_icon(member.product_user_id)
+```
+
+### Mute Remote Participant
+
+```gdscript
+func mute_player(lobby: HLobby, participant_id: String):
+    var opts = EOS.RTCAudio.UpdateReceivingOptions.new()
+    opts.room_name = lobby.lobby_id
+    opts.participant_id = participant_id
+    opts.audio_enabled = false  # Mute this participant
+    
+    var result = EOS.RTCAudio.RTCAudioInterface.update_receiving(opts)
+    if EOS.is_success(result):
+        print("Muted player: %s" % participant_id)
+```
+
+## Audio Device Management
+
+### List Audio Devices
+
+```gdscript
+func list_audio_devices():
+    # List input devices (microphones)
+    var input_count = EOS.RTCAudio.RTCAudioInterface.get_audio_input_devices_count()
+    print("=== Input Devices ===")
+    for i in range(input_count):
+        var opts = EOS.RTCAudio.GetAudioInputDeviceByIndexOptions.new()
+        opts.device_index = i
+        var device = EOS.RTCAudio.RTCAudioInterface.get_audio_input_device_by_index(opts)
+        if device:
+            print("%d: %s (Default: %s)" % [i, device.device_name, device.default_device])
+    
+    # List output devices (speakers/headphones)
+    var output_count = EOS.RTCAudio.RTCAudioInterface.get_audio_output_devices_count()
+    print("=== Output Devices ===")
+    for i in range(output_count):
+        var opts = EOS.RTCAudio.GetAudioOutputDeviceByIndexOptions.new()
+        opts.device_index = i
+        var device = EOS.RTCAudio.RTCAudioInterface.get_audio_output_device_by_index(opts)
+        if device:
+            print("%d: %s (Default: %s)" % [i, device.device_name, device.default_device])
+```
+
+### Set Audio Device
+
+```gdscript
+func set_microphone(device_id: String):
+    var opts = EOS.RTCAudio.SetAudioInputSettingsOptions.new()
+    opts.device_id = device_id
+    
+    var result = EOS.RTCAudio.RTCAudioInterface.set_audio_input_settings(opts)
+    if EOS.is_success(result):
+        print("Microphone set to: %s" % device_id)
+
+func set_speaker(device_id: String):
+    var opts = EOS.RTCAudio.SetAudioOutputSettingsOptions.new()
+    opts.device_id = device_id
+    
+    var result = EOS.RTCAudio.RTCAudioInterface.set_audio_output_settings(opts)
+    if EOS.is_success(result):
+        print("Speaker set to: %s" % device_id)
+```
+
+## Manual Audio Processing
+
+For advanced use cases, you can manually capture and play audio:
+
+### Manual Audio Input
+
+```gdscript
+func setup_manual_audio_input(lobby: HLobby):
+    # Enable manual audio input
+    HLobbies.local_rtc_options = {
+        use_manual_audio_input = true
+    }
+    
+    # Provide audio samples
+    var opts = EOS.RTCAudio.SendAudioOptions.new()
+    opts.room_name = lobby.lobby_id
+    opts.audio_buffer = get_microphone_samples()  # Your audio capture
+    
+    var result = EOS.RTCAudio.RTCAudioInterface.send_audio(opts)
+    if not EOS.is_success(result):
+        printerr("Failed to send audio")
+
+func get_microphone_samples() -> PackedFloat32Array:
+    # Implement your audio capture here
+    # Return 16-bit PCM audio at 48kHz
+    var samples = PackedFloat32Array()
+    # ... capture from AudioStreamCapture or OS
+    return samples
+```
+
+### Manual Audio Output
+
+```gdscript
+func setup_manual_audio_output(lobby: HLobby):
+    # Enable manual audio output
+    HLobbies.local_rtc_options = {
+        use_manual_audio_output = true
+    }
+    
+    # Listen for audio
+    IEOS.rtc_audio_interface_audio_before_render_callback.connect(_on_audio_before_render)
+
+func _on_audio_before_render(data: Dictionary):
+    var room_name = data.room_name
+    var audio_buffer = data.audio_buffer  # PackedFloat32Array
+    
+    # Play audio through your audio system
+    play_audio_samples(audio_buffer)
+
+func play_audio_samples(samples: PackedFloat32Array):
+    # Implement your audio playback here
+    # Feed to AudioStreamPlayer or OS audio output
+    pass
+```
+
+## RTC Data Channels
+
+RTC data channels provide low-latency data transmission alongside voice:
+
+```gdscript
+func send_rtc_data(lobby: HLobby, message: String):
+    var opts = EOS.RTC.SendDataOptions.new()
+    opts.room_name = lobby.lobby_id
+    opts.data = message.to_utf8_buffer()
+    
+    var result = EOS.RTC.RTCInterface.send_data(opts)
+    if EOS.is_success(result):
+        print("Sent RTC data: %s" % message)
+
+# Listen for incoming data
+func _ready():
+    IEOS.rtc_interface_data_received_callback.connect(_on_rtc_data_received)
+
+func _on_rtc_data_received(data: Dictionary):
+    var room_name = data.room_name
+    var participant_id = data.participant_id
+    var message = data.data.get_string_from_utf8()
+    
+    print("RTC data from %s: %s" % [participant_id, message])
+```
+
+## Complete Voice Chat UI Example
+
+```gdscript
+extends Control
+
+var current_lobby: HLobby = null
+var is_muted = false
+var muted_players = []  # Players we've muted
+
+@onready var mute_button = $MuteButton
+@onready var volume_slider = $VolumeSlider
+@onready var participants_list = $ParticipantsList
+
+func _ready():
+    mute_button.pressed.connect(toggle_self_mute)
+    volume_slider.value_changed.connect(set_volume)
+    
+    # Update UI every frame to show who's speaking
+    set_process(true)
+
+func _process(_delta):
+    if current_lobby:
+        update_speaking_indicators()
+
+func setup_voice_for_lobby(lobby: HLobby):
+    current_lobby = lobby
+    
+    # Populate participants list
+    refresh_participants()
+    
+    # Listen for member changes
+    lobby.member_joined.connect(func(_id): refresh_participants())
+    lobby.member_left.connect(func(_id): refresh_participants())
+
+func toggle_self_mute():
+    is_muted = not is_muted
+    
+    var opts = EOS.RTCAudio.UpdateSendingOptions.new()
+    opts.room_name = current_lobby.lobby_id
+    opts.audio_status = EOS.RTCAudio.Status.Disabled if is_muted else EOS.RTCAudio.Status.Enabled
+    
+    EOS.RTCAudio.RTCAudioInterface.update_sending(opts)
+    
+    mute_button.text = "Unmute" if is_muted else "Mute"
+    mute_button.modulate = Color.RED if is_muted else Color.WHITE
+
+func set_volume(value: float):
+    var opts = EOS.RTCAudio.SetAudioOutputSettingsOptions.new()
+    opts.volume = value / 100.0  # 0.0 to 1.0
+    
+    EOS.RTCAudio.RTCAudioInterface.set_audio_output_settings(opts)
+
+func refresh_participants():
+    for child in participants_list.get_children():
+        child.queue_free()
+    
+    var members = current_lobby.get_members()
+    for member in members:
+        create_participant_entry(member)
+
+func create_participant_entry(member):
+    var entry = HBoxContainer.new()
+    
+    # Name
+    var name_label = Label.new()
+    name_label.text = member.product_user_id
+    name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    entry.add_child(name_label)
+    
+    # Speaking indicator
+    var speaking_icon = TextureRect.new()
+    speaking_icon.name = "SpeakingIcon"
+    speaking_icon.visible = false
+    speaking_icon.custom_minimum_size = Vector2(16, 16)
+    entry.add_child(speaking_icon)
+    
+    # Mute button
+    var mute_btn = Button.new()
+    mute_btn.text = "Mute"
+    mute_btn.pressed.connect(func(): toggle_mute_participant(member.product_user_id, mute_btn))
+    entry.add_child(mute_btn)
+    
+    participants_list.add_child(entry)
+
+func toggle_mute_participant(participant_id: String, button: Button):
+    var is_muted_now = participant_id in muted_players
+    
+    if is_muted_now:
+        muted_players.erase(participant_id)
+    else:
+        muted_players.append(participant_id)
+    
+    var opts = EOS.RTCAudio.UpdateReceivingOptions.new()
+    opts.room_name = current_lobby.lobby_id
+    opts.participant_id = participant_id
+    opts.audio_enabled = is_muted_now  # Toggle
+    
+    EOS.RTCAudio.RTCAudioInterface.update_receiving(opts)
+    
+    button.text = "Unmute" if not is_muted_now else "Mute"
+    button.modulate = Color.RED if not is_muted_now else Color.WHITE
+
+func update_speaking_indicators():
+    var speaking = current_lobby.get_rtc_speaking_participants()
+    
+    for entry in participants_list.get_children():
+        var name_label = entry.get_child(0) as Label
+        var participant_id = name_label.text
+        var speaking_icon = entry.get_node("SpeakingIcon")
+        
+        speaking_icon.visible = (participant_id in speaking)
+```
+
+## Audio Settings Panel
+
+```gdscript
+extends Panel
+
+@onready var input_device_option = $VBoxContainer/InputDevice
+@onready var output_device_option = $VBoxContainer/OutputDevice
+@onready var input_volume_slider = $VBoxContainer/InputVolume
+@onready var output_volume_slider = $VBoxContainer/OutputVolume
+
+func _ready():
+    populate_audio_devices()
+    input_device_option.item_selected.connect(_on_input_device_changed)
+    output_device_option.item_selected.connect(_on_output_device_changed)
+    input_volume_slider.value_changed.connect(_on_input_volume_changed)
+    output_volume_slider.value_changed.connect(_on_output_volume_changed)
+
+func populate_audio_devices():
+    # Populate input devices
+    input_device_option.clear()
+    var input_count = EOS.RTCAudio.RTCAudioInterface.get_audio_input_devices_count()
+    for i in range(input_count):
+        var opts = EOS.RTCAudio.GetAudioInputDeviceByIndexOptions.new()
+        opts.device_index = i
+        var device = EOS.RTCAudio.RTCAudioInterface.get_audio_input_device_by_index(opts)
+        if device:
+            input_device_option.add_item(device.device_name)
+            input_device_option.set_item_metadata(i, device.device_id)
+            if device.default_device:
+                input_device_option.select(i)
+    
+    # Populate output devices
+    output_device_option.clear()
+    var output_count = EOS.RTCAudio.RTCAudioInterface.get_audio_output_devices_count()
+    for i in range(output_count):
+        var opts = EOS.RTCAudio.GetAudioOutputDeviceByIndexOptions.new()
+        opts.device_index = i
+        var device = EOS.RTCAudio.RTCAudioInterface.get_audio_output_device_by_index(opts)
+        if device:
+            output_device_option.add_item(device.device_name)
+            output_device_option.set_item_metadata(i, device.device_id)
+            if device.default_device:
+                output_device_option.select(i)
+
+func _on_input_device_changed(index: int):
+    var device_id = input_device_option.get_item_metadata(index)
+    var opts = EOS.RTCAudio.SetAudioInputSettingsOptions.new()
+    opts.device_id = device_id
+    EOS.RTCAudio.RTCAudioInterface.set_audio_input_settings(opts)
+
+func _on_output_device_changed(index: int):
+    var device_id = output_device_option.get_item_metadata(index)
+    var opts = EOS.RTCAudio.SetAudioOutputSettingsOptions.new()
+    opts.device_id = device_id
+    EOS.RTCAudio.RTCAudioInterface.set_audio_output_settings(opts)
+
+func _on_input_volume_changed(value: float):
+    var opts = EOS.RTCAudio.SetAudioInputSettingsOptions.new()
+    opts.volume = value / 100.0
+    EOS.RTCAudio.RTCAudioInterface.set_audio_input_settings(opts)
+
+func _on_output_volume_changed(value: float):
+    var opts = EOS.RTCAudio.SetAudioOutputSettingsOptions.new()
+    opts.volume = value / 100.0
+    EOS.RTCAudio.RTCAudioInterface.set_audio_output_settings(opts)
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Lobbies" icon="users">
+    RTC works best when integrated with lobbies
+  </Card>
+  <Card title="Allow Muting" icon="microphone-slash">
+    Always give players the option to mute themselves and others
+  </Card>
+  <Card title="Show Indicators" icon="signal">
+    Display speaking indicators so players know who's talking
+  </Card>
+  <Card title="Test Audio Devices" icon="headphones">
+    Let players test and configure their audio devices
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="No voice communication">
+  - Verify microphone permissions are granted
+  - Check that `enable_rtc_room` is true when creating lobby
+  - Ensure `local_rtc_options` includes `EnableDataChannel` flag
+  - Test with different audio devices
+</Accordion>
+
+<Accordion title="Can't hear other players">
+  - Check output device is set correctly
+  - Verify output volume is not zero
+  - Ensure you haven't muted specific participants
+  - Check that other players have working microphones
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Lobbies" icon="users" href="/features/lobbies-sessions">
+    Learn about lobby integration with RTC
+  </Card>
+  <Card title="P2P Networking" icon="network-wired" href="/features/p2p-networking">
+    Combine voice with game networking
+  </Card>
+  <Card title="RTC API Reference" icon="code" href="/reference/rtc-interface">
+    Complete RTC API documentation
+  </Card>
+</CardGroup>

@@ -1,0 +1,220 @@
+---
+title: Exporting Games
+description: Export your Godot game with EOS for different platforms
+---
+
+This guide covers platform-specific export requirements and settings for games using Epic Online Services.
+
+## Supported Platforms
+
+EOSG supports:
+- Windows x64
+- Linux x64/arm64  
+- Android x64/arm64
+- macOS
+- iOS arm64 (device and simulator)
+
+## Windows Export
+
+### Export Settings
+
+1. In Godot Editor, go to `Project → Export`
+2. Create a new Windows Desktop export preset
+3. Configure your application name and icon
+4. Export the project
+
+### Runtime Requirements
+
+The exported game requires the EOS SDK DLL in the same directory as the executable:
+```
+YourGame.exe
+EOSSDK-Win64-Shipping.dll
+```
+
+The DLL is automatically included in the plugin's `bin/windows/` folder.
+
+<Note>
+For Account Portal login on Windows, you must bootstrap the executable. See the [Bootstrapping EOS guide](/guides/bootstrapping-eos).
+</Note>
+
+## Linux Export
+
+### Export Settings
+
+<Steps>
+  <Step title="Create Linux export preset">
+    In `Project → Export`, add a Linux/X11 export preset.
+  </Step>
+
+  <Step title="Configure architecture">
+    Choose either:
+    - x64 (standard)
+    - arm64 (for ARM devices like Raspberry Pi)
+  </Step>
+
+  <Step title="Export the project">
+    The EOS shared library will be bundled automatically:
+    - `libEOSSDK-Linux-Shipping.so` (x64)
+    - `libEOSSDK-LinuxArm64-Shipping.so` (arm64)
+  </Step>
+</Steps>
+
+## Android Export
+
+Android requires additional configuration due to EOS SDK dependencies.
+
+### Prerequisites
+
+<Steps>
+  <Step title="Setup Android Build Template">
+    Follow the Godot tutorial: [Gradle builds for Android](https://docs.godotengine.org/en/stable/tutorials/export/android_gradle_build.html)
+    
+    This creates an Android project at `res://android/build`.
+  </Step>
+
+  <Step title="Add EOS SDK dependencies">
+    In `res://android/build/build.gradle`, add these dependencies:
+    
+    ```gradle
+    dependencies {
+        implementation libraries.kotlinStdLib
+        implementation libraries.androidxFragment
+        
+        // EOS SDK dependencies
+        implementation 'androidx.appcompat:appcompat:1.5.1'
+        implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+        implementation 'androidx.security:security-crypto:1.0.0'
+        implementation 'androidx.browser:browser:1.4.0'
+        implementation 'androidx.webkit:webkit:1.7.0'
+        implementation files('../../addons/epic-online-services-godot/bin/android/eossdk-StaticSTDC-release.aar')
+    }
+    ```
+  </Step>
+
+  <Step title="Configure login protocol scheme">
+    In the same `build.gradle` file, add to `defaultConfig`:
+    
+    ```gradle
+    defaultConfig {
+        // ... other config
+        
+        // Required by EOS Android SDK
+        String ClientId = "YOUR_EOS_CLIENT_ID_HERE"
+        resValue("string", "eos_login_protocol_scheme", "eos." + ClientId.toLowerCase())
+    }
+    ```
+    
+    Replace `YOUR_EOS_CLIENT_ID_HERE` with your actual EOS Client ID.
+  </Step>
+
+  <Step title="Update minimum SDK version">
+    In `res://android/build/config.gradle`, update minSdk to 23:
+    
+    ```gradle
+    minSdk: 23,
+    ```
+  </Step>
+
+  <Step title="Initialize EOS SDK in Java">
+    In `res://android/build/src/com/godot/game/GodotApp.java`:
+    
+    ```java
+    package com.godot.game;
+    
+    import com.epicgames.mobile.eossdk.EOSSDK;
+    import org.godotengine.godot.GodotActivity;
+    import android.os.Bundle;
+    
+    public class GodotApp extends GodotActivity {
+        static {
+            System.loadLibrary("EOSSDK");
+        }
+        
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            EOSSDK.init(getActivity());
+            
+            setTheme(R.style.GodotAppMainTheme);
+            super.onCreate(savedInstanceState);
+        }
+    }
+    ```
+  </Step>
+
+  <Step title="Configure export settings">
+    In Godot Editor's Export dialog:
+    
+    - Enable `Use Gradle Build`
+    - Enable `arm64-v8a` architecture
+    - Enable these permissions:
+      - `ACCESS_NETWORK_STATE`
+      - `ACCESS_WIFI_STATE`
+      - `INTERNET`
+    - Fill in package name and other details
+  </Step>
+
+  <Step title="Export APK">
+    Click `Export Project` to generate the Android APK.
+  </Step>
+</Steps>
+
+<Note>
+Alternatively, use the community-created [Android Export Plugin](https://github.com/uno1982/EOSG-android-exporter) to automate these steps.
+</Note>
+
+## iOS Export
+
+### Export Process
+
+<Steps>
+  <Step title="Export from Godot">
+    Create an iOS export preset in `Project → Export` and export the project.
+    
+    **You may get a build error** - this is normal, ignore it.
+  </Step>
+
+  <Step title="Build in Xcode">
+    Open the generated iOS project in Xcode and build.
+    
+    The build should succeed. EOSG supports:
+    - iOS arm64 device
+    - iOS arm64 simulator
+  </Step>
+</Steps>
+
+## macOS Export
+
+### Export Settings
+
+1. Create a macOS export preset
+2. Configure bundle identifier and signing
+3. Export the project
+
+The EOS SDK framework is automatically bundled in the `.app` bundle.
+
+## Script Encryption
+
+<Warning>
+Your EOS credentials (`CLIENT_SECRET`, etc.) should be kept private. When exporting, consider using script encryption.
+</Warning>
+
+See Godot's guide: [Compiling with script key encryption](https://docs.godotengine.org/en/stable/development/compiling/compiling_with_script_encryption_key.html)
+
+## Common Export Issues
+
+### Missing EOS Libraries
+
+If you get errors about missing EOS libraries:
+1. Verify the plugin's `bin/<platform>/` folder contains the EOS SDK libraries
+2. Re-download the latest EOSG release if needed
+
+### Android Build Failures
+
+Common causes:
+- Incorrect `minSdk` version (must be 23+)
+- Missing EOS dependencies in `build.gradle`
+- Missing `EOSSDK.init()` call in Java code
+
+### Windows DLL Not Found
+
+Ensure `EOSSDK-Win64-Shipping.dll` is in the same directory as your `.exe` file.

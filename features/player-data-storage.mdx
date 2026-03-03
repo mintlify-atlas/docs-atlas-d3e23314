@@ -1,0 +1,401 @@
+---
+title: Player data storage
+description: Store and sync player data across devices with Epic Online Services cloud storage
+---
+
+Epic Online Services provides cloud storage for player data, allowing you to save game progress, settings, and other player-specific data that syncs across devices.
+
+## Overview
+
+EOS offers two types of cloud storage:
+
+- **Player Data Storage**: Per-player cloud saves (save games, progress, settings)
+- **Title Storage**: Read-only game-wide data (config files, asset manifests)
+
+This guide focuses on Player Data Storage. For Title Storage, see the [Title Storage API reference](/reference/titlestorage-interface).
+
+## Player Data Storage
+
+Player Data Storage allows each player to save up to 100MB of data in the cloud.
+
+### File Operations
+
+You can:
+- **Upload** files to the cloud
+- **Download** files from the cloud
+- **List** all files for a player
+- **Delete** files from the cloud
+- **Query** file metadata
+
+<Note>
+All operations require the player to be logged in with a valid Product User ID.
+</Note>
+
+## Uploading Files
+
+### Basic Upload
+
+```gdscript
+func save_game_to_cloud(save_data: Dictionary):
+    # Convert save data to JSON
+    var json_string = JSON.stringify(save_data)
+    var file_data = json_string.to_utf8_buffer()
+    
+    # Write to local file first
+    var local_path = "user://savegame.json"
+    var file = FileAccess.open(local_path, FileAccess.WRITE)
+    file.store_buffer(file_data)
+    file.close()
+    
+    # Upload to cloud
+    var opts = EOS.PlayerDataStorage.WriteFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = "savegame.json"
+    opts.chunk_length_bytes = 4096
+    opts.local_file_path = ProjectSettings.globalize_path(local_path)
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.write_file(opts)
+    var result = await IEOS.player_data_storage_interface_write_file_callback
+    
+    if EOS.is_success(result):
+        print("Save uploaded to cloud successfully!")
+    else:
+        printerr("Failed to upload save: %s" % EOS.result_str(result))
+```
+
+### Upload with Progress
+
+```gdscript
+func save_with_progress(local_file_path: String, cloud_filename: String):
+    # Listen for progress
+    IEOS.player_data_storage_interface_file_transfer_progress_callback.connect(_on_upload_progress)
+    
+    var opts = EOS.PlayerDataStorage.WriteFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = cloud_filename
+    opts.chunk_length_bytes = 4096
+    opts.local_file_path = ProjectSettings.globalize_path(local_file_path)
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.write_file(opts)
+    var result = await IEOS.player_data_storage_interface_write_file_callback
+    
+    IEOS.player_data_storage_interface_file_transfer_progress_callback.disconnect(_on_upload_progress)
+    
+    return EOS.is_success(result)
+
+func _on_upload_progress(data: Dictionary):
+    var filename = data.filename
+    var bytes_transferred = data.bytes_transferred
+    var total_bytes = data.total_file_size_bytes
+    var progress = (float(bytes_transferred) / float(total_bytes)) * 100.0
+    
+    print("Uploading %s: %.1f%%" % [filename, progress])
+    update_progress_bar(progress)
+```
+
+## Downloading Files
+
+### Basic Download
+
+```gdscript
+func load_game_from_cloud() -> Dictionary:
+    var cloud_filename = "savegame.json"
+    var local_path = "user://downloaded_save.json"
+    
+    var opts = EOS.PlayerDataStorage.ReadFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = cloud_filename
+    opts.read_chunk_length_bytes = 4096
+    opts.local_file_path = ProjectSettings.globalize_path(local_path)
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.read_file(opts)
+    var result = await IEOS.player_data_storage_interface_read_file_callback
+    
+    if not EOS.is_success(result):
+        printerr("Failed to download save: %s" % EOS.result_str(result))
+        return {}
+    
+    # Read the downloaded file
+    var file = FileAccess.open(local_path, FileAccess.READ)
+    if not file:
+        printerr("Failed to open downloaded file")
+        return {}
+    
+    var json_string = file.get_as_text()
+    file.close()
+    
+    # Parse JSON
+    var json = JSON.new()
+    var parse_result = json.parse(json_string)
+    if parse_result != OK:
+        printerr("Failed to parse save data")
+        return {}
+    
+    return json.data
+```
+
+## Querying Files
+
+### List All Player Files
+
+```gdscript
+func list_cloud_saves():
+    # Query all files for the player
+    var opts = EOS.PlayerDataStorage.QueryFileListOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.query_file_list(opts)
+    var result = await IEOS.player_data_storage_interface_query_file_list_callback
+    
+    if not EOS.is_success(result):
+        printerr("Failed to query file list")
+        return []
+    
+    # Get file count
+    var count_opts = EOS.PlayerDataStorage.GetFileMetadataCountOptions.new()
+    count_opts.local_user_id = HAuth.product_user_id
+    var file_count = EOS.PlayerDataStorage.PlayerDataStorageInterface.get_file_metadata_count(count_opts)
+    
+    print("Found %d files in cloud" % file_count)
+    
+    # Get metadata for each file
+    var files = []
+    for i in range(file_count):
+        var copy_opts = EOS.PlayerDataStorage.CopyFileMetadataByIndexOptions.new()
+        copy_opts.local_user_id = HAuth.product_user_id
+        copy_opts.index = i
+        
+        var metadata_result = EOS.PlayerDataStorage.PlayerDataStorageInterface.copy_file_metadata_by_index(copy_opts)
+        if EOS.is_success(metadata_result):
+            files.append(metadata_result.file_metadata)
+    
+    return files
+
+func display_cloud_saves(files: Array):
+    for file in files:
+        print("File: %s" % file.filename)
+        print("  Size: %d bytes" % file.file_size_bytes)
+        print("  MD5 Hash: %s" % file.md5_hash)
+        print("  Last Modified: %d" % file.last_modified_time)
+```
+
+### Get Specific File Metadata
+
+```gdscript
+func get_file_info(filename: String):
+    var opts = EOS.PlayerDataStorage.QueryFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = filename
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.query_file(opts)
+    var result = await IEOS.player_data_storage_interface_query_file_callback
+    
+    if not EOS.is_success(result):
+        printerr("File not found: %s" % filename)
+        return null
+    
+    # Copy metadata
+    var copy_opts = EOS.PlayerDataStorage.CopyFileMetadataByFilenameOptions.new()
+    copy_opts.local_user_id = HAuth.product_user_id
+    copy_opts.filename = filename
+    
+    var metadata_result = EOS.PlayerDataStorage.PlayerDataStorageInterface.copy_file_metadata_by_filename(copy_opts)
+    if EOS.is_success(metadata_result):
+        return metadata_result.file_metadata
+    
+    return null
+```
+
+## Deleting Files
+
+```gdscript
+func delete_cloud_save(filename: String):
+    var opts = EOS.PlayerDataStorage.DeleteFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = filename
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.delete_file(opts)
+    var result = await IEOS.player_data_storage_interface_delete_file_callback
+    
+    if EOS.is_success(result):
+        print("Deleted: %s" % filename)
+    else:
+        printerr("Failed to delete: %s" % EOS.result_str(result))
+```
+
+## Complete Save System Example
+
+```gdscript
+extends Node
+
+const SAVE_FILENAME = "player_save.json"
+const LOCAL_SAVE_PATH = "user://local_save.json"
+
+var current_save_data = {
+    "player_name": "",
+    "level": 1,
+    "experience": 0,
+    "inventory": [],
+    "quest_progress": {},
+    "timestamp": 0
+}
+
+func _ready():
+    load_game()
+
+# Save game (local + cloud)
+func save_game():
+    current_save_data.timestamp = Time.get_unix_time_from_system()
+    
+    # Save locally first
+    save_local()
+    
+    # Upload to cloud
+    await save_cloud()
+
+func save_local():
+    var json_string = JSON.stringify(current_save_data)
+    var file = FileAccess.open(LOCAL_SAVE_PATH, FileAccess.WRITE)
+    if file:
+        file.store_string(json_string)
+        file.close()
+        print("Saved locally")
+
+func save_cloud():
+    var opts = EOS.PlayerDataStorage.WriteFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = SAVE_FILENAME
+    opts.chunk_length_bytes = 4096
+    opts.local_file_path = ProjectSettings.globalize_path(LOCAL_SAVE_PATH)
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.write_file(opts)
+    var result = await IEOS.player_data_storage_interface_write_file_callback
+    
+    if EOS.is_success(result):
+        print("Saved to cloud")
+    else:
+        printerr("Cloud save failed: %s" % EOS.result_str(result))
+
+# Load game (cloud preferred, fallback to local)
+func load_game():
+    # Try loading from cloud first
+    var cloud_data = await load_cloud()
+    
+    if not cloud_data.is_empty():
+        # Check if cloud save is newer
+        var local_data = load_local()
+        
+        if local_data.is_empty() or cloud_data.timestamp > local_data.get("timestamp", 0):
+            print("Using cloud save (newer)")
+            current_save_data = cloud_data
+            save_local()  # Sync cloud to local
+            return
+    
+    # Fallback to local save
+    var local_data = load_local()
+    if not local_data.is_empty():
+        print("Using local save")
+        current_save_data = local_data
+    else:
+        print("No save found, starting new game")
+
+func load_local() -> Dictionary:
+    if not FileAccess.file_exists(LOCAL_SAVE_PATH):
+        return {}
+    
+    var file = FileAccess.open(LOCAL_SAVE_PATH, FileAccess.READ)
+    if not file:
+        return {}
+    
+    var json_string = file.get_as_text()
+    file.close()
+    
+    var json = JSON.new()
+    if json.parse(json_string) == OK:
+        return json.data
+    
+    return {}
+
+func load_cloud() -> Dictionary:
+    # Check if file exists
+    var file_info = await get_cloud_file_info(SAVE_FILENAME)
+    if not file_info:
+        return {}
+    
+    # Download
+    var temp_path = "user://temp_cloud_save.json"
+    var opts = EOS.PlayerDataStorage.ReadFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = SAVE_FILENAME
+    opts.read_chunk_length_bytes = 4096
+    opts.local_file_path = ProjectSettings.globalize_path(temp_path)
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.read_file(opts)
+    var result = await IEOS.player_data_storage_interface_read_file_callback
+    
+    if not EOS.is_success(result):
+        return {}
+    
+    # Read file
+    var file = FileAccess.open(temp_path, FileAccess.READ)
+    if not file:
+        return {}
+    
+    var json_string = file.get_as_text()
+    file.close()
+    
+    var json = JSON.new()
+    if json.parse(json_string) == OK:
+        return json.data
+    
+    return {}
+
+func get_cloud_file_info(filename: String):
+    var opts = EOS.PlayerDataStorage.QueryFileOptions.new()
+    opts.local_user_id = HAuth.product_user_id
+    opts.filename = filename
+    
+    EOS.PlayerDataStorage.PlayerDataStorageInterface.query_file(opts)
+    var result = await IEOS.player_data_storage_interface_query_file_callback
+    
+    if not EOS.is_success(result):
+        return null
+    
+    var copy_opts = EOS.PlayerDataStorage.CopyFileMetadataByFilenameOptions.new()
+    copy_opts.local_user_id = HAuth.product_user_id
+    copy_opts.filename = filename
+    
+    var metadata = EOS.PlayerDataStorage.PlayerDataStorageInterface.copy_file_metadata_by_filename(copy_opts)
+    if EOS.is_success(metadata):
+        return metadata.file_metadata
+    
+    return null
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Save Locally First" icon="hard-drive">
+    Always save locally before uploading to cloud
+  </Card>
+  <Card title="Use Timestamps" icon="clock">
+    Include timestamps to resolve conflicts between local and cloud saves
+  </Card>
+  <Card title="Compress Data" icon="file-zipper">
+    Compress large save files before uploading
+  </Card>
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Always have fallback to local saves if cloud fails
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Title Storage" icon="database" href="/reference/titlestorage-interface">
+    Learn about read-only game-wide storage
+  </Card>
+  <Card title="Player Data Storage API" icon="code" href="/reference/playerdatastorage-interface">
+    Complete API reference
+  </Card>
+</CardGroup>

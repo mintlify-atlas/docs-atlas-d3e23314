@@ -1,0 +1,241 @@
+---
+title: AntiCheat Interface
+description: API reference for the EOS AntiCheat Client Interface in Godot
+---
+
+The AntiCheat Interface provides client-side anti-cheat protection using Epic's Easy Anti-Cheat technology.
+
+## Overview
+
+The AntiCheat Client Interface allows:
+
+- Starting and ending anti-cheat sessions
+- Protecting and unprotecting network messages
+- Peer registration for peer-to-peer games
+- Receiving server anti-cheat messages
+- Adding integrity catalogs
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### anticheat_client_interface_begin_session
+
+```gdscript
+IEOS.anticheat_client_interface_begin_session(options: RefCounted) -> int
+```
+
+Begins an anti-cheat session.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `mode` - EOS_EAntiCheatClientMode (client or peer-to-peer)
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_end_session
+
+```gdscript
+IEOS.anticheat_client_interface_end_session(options: RefCounted) -> int
+```
+
+Ends the anti-cheat session.
+
+**Parameters:**
+- `options` - Dictionary (empty)
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_add_external_integrity_catalog
+
+```gdscript
+IEOS.anticheat_client_interface_add_external_integrity_catalog(options: RefCounted) -> int
+```
+
+Adds an external integrity catalog for additional file protection.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `path_to_bin_file` - Path to catalog binary file (will be globalized)
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_receive_message_from_server
+
+```gdscript
+IEOS.anticheat_client_interface_receive_message_from_server(options: RefCounted) -> int
+```
+
+Processes an anti-cheat message from the server.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `data` - PackedByteArray of message data
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_register_peer
+
+```gdscript
+IEOS.anticheat_client_interface_register_peer(options: RefCounted) -> int
+```
+
+Registers a peer in peer-to-peer mode.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `peer_handle` - Peer identifier string
+  - `client_type` - EOS_EAntiCheatCommonClientType
+  - `client_platform` - EOS_EAntiCheatCommonClientPlatform
+  - `authentication_timeout` - Timeout in seconds
+  - `ip_address` - Optional peer IP address
+  - `peer_product_user_id` - Product User ID of peer
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_unregister_peer
+
+```gdscript
+IEOS.anticheat_client_interface_unregister_peer(options: RefCounted) -> int
+```
+
+Unregisters a peer.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `peer_handle` - Peer identifier string
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_receive_message_from_peer
+
+```gdscript
+IEOS.anticheat_client_interface_receive_message_from_peer(options: RefCounted) -> int
+```
+
+Processes an anti-cheat message from a peer.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `peer_handle` - Peer identifier string
+  - `data` - PackedByteArray of message data
+
+**Returns:** EOS_EResult
+
+### anticheat_client_interface_get_protect_message_output_length
+
+```gdscript
+IEOS.anticheat_client_interface_get_protect_message_output_length(options: RefCounted) -> Dictionary
+```
+
+Gets the required buffer size for protecting a message.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `data_length_bytes` - Input data length
+
+**Returns:** Dictionary with `result_code` and `buffer_size_bytes`
+
+### anticheat_client_interface_protect_message
+
+```gdscript
+IEOS.anticheat_client_interface_protect_message(options: RefCounted) -> Dictionary
+```
+
+Protects (encrypts and signs) a network message.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `data` - PackedByteArray to protect
+  - `out_buffer_size_bytes` - Output buffer size
+
+**Returns:** Dictionary with `result_code`, `out_buffer`, and `out_bytes_written`
+
+### anticheat_client_interface_unprotect_message
+
+```gdscript
+IEOS.anticheat_client_interface_unprotect_message(options: RefCounted) -> Dictionary
+```
+
+Unprotects (decrypts and verifies) a network message.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `data` - PackedByteArray to unprotect
+  - `out_buffer_size_bytes` - Output buffer size
+
+**Returns:** Dictionary with `result_code`, `out_buffer`, and `out_bytes_written`
+
+## Client Modes
+
+The anti-cheat client can operate in two modes:
+
+- **Client Mode** - For traditional client-server games
+- **Peer-to-Peer Mode** - For peer-to-peer games
+
+## Example Usage
+
+```gdscript
+# Begin anti-cheat session (client mode)
+var begin_result = IEOS.anticheat_client_interface_begin_session({
+    "local_user_id": product_user_id,
+    "mode": EOS_EAntiCheatClientMode.EOS_ACCM_ClientServer
+})
+
+if begin_result == EOS_EResult.EOS_Success:
+    print("Anti-cheat session started")
+
+# Process message from server
+var server_message = receive_from_server()  # Your networking code
+IEOS.anticheat_client_interface_receive_message_from_server({
+    "data": server_message
+})
+
+# Protect a message before sending
+var game_data = PackedByteArray([1, 2, 3, 4])
+var output_size = IEOS.anticheat_client_interface_get_protect_message_output_length({
+    "data_length_bytes": game_data.size()
+})
+
+if output_size.result_code == EOS_EResult.EOS_Success:
+    var protected = IEOS.anticheat_client_interface_protect_message({
+        "data": game_data,
+        "out_buffer_size_bytes": output_size.buffer_size_bytes
+    })
+    
+    if protected.result_code == EOS_EResult.EOS_Success:
+        send_to_server(protected.out_buffer)  # Your networking code
+
+# Peer-to-peer mode
+var p2p_begin = IEOS.anticheat_client_interface_begin_session({
+    "local_user_id": product_user_id,
+    "mode": EOS_EAntiCheatClientMode.EOS_ACCM_PeerToPeer
+})
+
+# Register a peer
+var register_result = IEOS.anticheat_client_interface_register_peer({
+    "peer_handle": "peer_123",
+    "client_type": EOS_EAntiCheatCommonClientType.EOS_ACCCT_ProtectedClient,
+    "client_platform": EOS_EAntiCheatCommonClientPlatform.EOS_ACCCP_Windows,
+    "authentication_timeout": 60,
+    "peer_product_user_id": peer_product_user_id
+})
+
+# End session when done
+IEOS.anticheat_client_interface_end_session({})
+```
+
+## Important Notes
+
+- Anti-cheat sessions must be started before joining game sessions
+- Always end the session when disconnecting
+- Message protection adds overhead - use for critical game data only
+- Integrity catalogs must be generated and managed through Easy Anti-Cheat tools
+- The anti-cheat client requires Easy Anti-Cheat to be properly installed
+
+## See Also
+
+- Easy Anti-Cheat Documentation
+- AntiCheat Server Interface - Server-side anti-cheat (separate interface)
+- Epic Games Developer Portal - Configure anti-cheat settings

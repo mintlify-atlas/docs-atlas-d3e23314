@@ -1,0 +1,331 @@
+---
+title: Stats and leaderboards
+description: Track player statistics and implement competitive leaderboards with Epic Online Services
+---
+
+Epic Online Services provides a robust system for tracking player statistics and displaying competitive leaderboards. EOSG makes it easy to integrate these features through the `HStats` and `HLeaderboards` classes.
+
+## Overview
+
+EOS stats and leaderboards work together:
+- **Stats**: Track numerical player data (kills, deaths, score, playtime, etc.)
+- **Leaderboards**: Rank players based on their stats
+- **Aggregation**: Combine stats in various ways (sum, min, max, latest)
+
+Stats are the foundation - leaderboards automatically update when players ingest new stat data.
+
+## Setting Up Stats and Leaderboards
+
+Define stats and leaderboards in the [Epic Games Developer Portal](https://dev.epicgames.com/portal):
+
+<Steps>
+  <Step title="Define Stats">
+    Go to Game Services → Stats and create stat definitions (e.g., "kills", "deaths", "score")
+  </Step>
+  <Step title="Define Leaderboards">
+    Go to Game Services → Leaderboards and create leaderboard definitions
+  </Step>
+  <Step title="Link Stats to Leaderboards">
+    Configure which stats each leaderboard tracks and the aggregation method
+  </Step>
+  <Step title="Deploy Configuration">
+    Publish your changes to the active deployment
+  </Step>
+</Steps>
+
+## Player Statistics
+
+### Ingest Stats
+
+Update player stats by ingesting new values:
+
+```gdscript
+func record_match_stats(kills: int, deaths: int, score: int):
+    var stats_to_ingest = [
+        {name = "kills", amount = kills},
+        {name = "deaths", amount = deaths},
+        {name = "score", amount = score},
+        {name = "matches_played", amount = 1}
+    ]
+    
+    var success = await HStats.ingest_stat_async(stats_to_ingest)
+    if success:
+        print("Stats updated successfully")
+    else:
+        printerr("Failed to update stats")
+```
+
+<Note>
+By default, EOS uses `Sum` aggregation, so ingesting `{name = "kills", amount = 5}` will add 5 to the player's total kills.
+</Note>
+
+### Query Player Stats
+
+Retrieve a player's current stat values:
+
+```gdscript
+func load_player_stats():
+    var stat_names = ["kills", "deaths", "score", "matches_played"]
+    
+    var stats = await HStats.query_stats_async(HAuth.product_user_id, stat_names)
+    if stats:
+        for stat in stats:
+            print("%s: %d" % [stat.name, stat.value])
+    else:
+        printerr("Failed to query stats")
+```
+
+### Stat Aggregation Types
+
+When defining stats in the Developer Portal, choose an aggregation method:
+
+| Aggregation | Description | Example Use Case |
+|-------------|-------------|------------------|
+| **Sum** | Adds all ingested values | Total kills, total score |
+| **Latest** | Uses only the most recent value | Current level, active loadout |
+| **Min** | Keeps the minimum value | Best lap time, fewest deaths |
+| **Max** | Keeps the maximum value | Highest combo, peak rank |
+
+```gdscript
+# Example: Track fastest lap time (use Min aggregation in portal)
+func record_lap_time(time_seconds: float):
+    var stats = [{name = "fastest_lap", amount = int(time_seconds * 1000)}]  # Store as milliseconds
+    await HStats.ingest_stat_async(stats)
+```
+
+## Leaderboards
+
+### Query Leaderboard Definitions
+
+Get information about available leaderboards:
+
+```gdscript
+func load_leaderboard_definitions():
+    var definitions = await HLeaderboards.query_leaderboard_definitions_async()
+    
+    for definition in definitions:
+        print("Leaderboard: %s" % definition.leaderboard_id)
+        print("  Stat: %s" % definition.stat_name)
+        print("  Aggregation: %s" % definition.aggregation)
+```
+
+### Get Top Players
+
+Retrieve the top players on a leaderboard:
+
+```gdscript
+func show_top_players():
+    var records = await HLeaderboards.get_leaderboard_records_async("global_kills")
+    
+    print("=== Top 10 Players ===")
+    for i in range(min(10, records.size())):
+        var record = records[i]
+        print("%d. %s - %d kills" % [record.rank, record.user_display_name, record.score])
+```
+
+### Get Specific Player Ranks
+
+```gdscript
+func show_my_rank():
+    var user_ids = [HAuth.product_user_id]
+    var records = await HLeaderboards.query_leaderboard_user_scores_async("global_kills", user_ids)
+    
+    if records.is_empty():
+        print("No rank yet - play a match to get ranked!")
+        return
+    
+    var my_record = records[0]
+    print("Your rank: #%d" % my_record.rank)
+    print("Your score: %d" % my_record.score)
+```
+
+### Leaderboard with Pagination
+
+For large leaderboards, use pagination:
+
+```gdscript
+func show_leaderboard_page(page: int, page_size: int = 10):
+    var start_rank = (page - 1) * page_size + 1
+    var records = await HLeaderboards.get_leaderboard_records_range_async(
+        "global_score",
+        start_rank,
+        page_size
+    )
+    
+    print("=== Page %d (Ranks %d-%d) ===" % [page, start_rank, start_rank + records.size() - 1])
+    for record in records:
+        print("%d. %s - %d points" % [record.rank, record.user_display_name, record.score])
+```
+
+## Complete Leaderboard UI Example
+
+```gdscript
+extends Control
+
+@onready var leaderboard_list = $VBoxContainer/LeaderboardList
+@onready var player_rank_label = $PlayerRank
+@onready var refresh_button = $RefreshButton
+
+var current_leaderboard_id = "global_score"
+
+func _ready():
+    refresh_button.pressed.connect(refresh_leaderboard)
+    refresh_leaderboard()
+
+func refresh_leaderboard():
+    # Clear existing entries
+    for child in leaderboard_list.get_children():
+        child.queue_free()
+    
+    # Show loading
+    var loading = Label.new()
+    loading.text = "Loading..."
+    leaderboard_list.add_child(loading)
+    
+    # Get top 100 players
+    var records = await HLeaderboards.get_leaderboard_records_async(current_leaderboard_id, 100)
+    
+    loading.queue_free()
+    
+    if records.is_empty():
+        var empty_label = Label.new()
+        empty_label.text = "No leaderboard data yet"
+        leaderboard_list.add_child(empty_label)
+        return
+    
+    # Display entries
+    for record in records:
+        create_leaderboard_entry(record)
+    
+    # Show player's own rank
+    update_player_rank(records)
+
+func create_leaderboard_entry(record: Dictionary):
+    var entry = HBoxContainer.new()
+    
+    # Rank
+    var rank_label = Label.new()
+    rank_label.text = "#%d" % record.rank
+    rank_label.custom_minimum_size.x = 60
+    entry.add_child(rank_label)
+    
+    # Player name
+    var name_label = Label.new()
+    name_label.text = record.user_display_name
+    name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    entry.add_child(name_label)
+    
+    # Score
+    var score_label = Label.new()
+    score_label.text = str(record.score)
+    score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    score_label.custom_minimum_size.x = 100
+    entry.add_child(score_label)
+    
+    # Highlight current player
+    if record.user_id == HAuth.product_user_id:
+        entry.modulate = Color.YELLOW
+    
+    leaderboard_list.add_child(entry)
+
+func update_player_rank(records: Array):
+    # Find player's entry
+    for record in records:
+        if record.user_id == HAuth.product_user_id:
+            player_rank_label.text = "Your Rank: #%d (%d points)" % [record.rank, record.score]
+            return
+    
+    # Player not in top 100, query separately
+    var user_records = await HLeaderboards.query_leaderboard_user_scores_async(
+        current_leaderboard_id,
+        [HAuth.product_user_id]
+    )
+    
+    if user_records.is_empty():
+        player_rank_label.text = "Your Rank: Unranked"
+    else:
+        var my_record = user_records[0]
+        player_rank_label.text = "Your Rank: #%d (%d points)" % [my_record.rank, my_record.score]
+```
+
+## Advanced: Multiple Leaderboards
+
+Games often have multiple leaderboards (daily, weekly, all-time):
+
+```gdscript
+func setup_multiple_leaderboards():
+    var leaderboards = {
+        "daily_score": "Daily Champions",
+        "weekly_score": "Weekly Champions",
+        "alltime_score": "All-Time Champions"
+    }
+    
+    for leaderboard_id in leaderboards:
+        var records = await HLeaderboards.get_leaderboard_records_async(leaderboard_id, 10)
+        display_mini_leaderboard(leaderboards[leaderboard_id], records)
+```
+
+## Integration with Achievements
+
+Stats automatically trigger achievements when thresholds are met:
+
+```gdscript
+func on_match_complete(kills: int):
+    # Ingest kill stat
+    var stats = [{name = "kills", amount = kills}]
+    await HStats.ingest_stat_async(stats)
+    
+    # If player reaches 100 total kills, "100_KILLS" achievement unlocks automatically
+    # No need to manually call HAchievements.unlock_achievement_async()
+```
+
+<Tip>
+Define achievement stat thresholds in the Developer Portal to automatically unlock achievements when stats reach certain values.
+</Tip>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Batch Stats" icon="layer-group">
+    Ingest multiple stats in a single call for better performance
+  </Card>
+  <Card title="Cache Leaderboards" icon="database">
+    Cache leaderboard data and refresh periodically, not on every frame
+  </Card>
+  <Card title="Use Aggregation" icon="calculator">
+    Choose the right aggregation type for each stat
+  </Card>
+  <Card title="Validate Stats" icon="shield-check">
+    Never trust client-side stat values - use authoritative servers for competitive games
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Stats not updating">
+  - Verify stat names match those defined in the Developer Portal exactly
+  - Check that the user is logged in with a valid Product User ID
+  - Ensure stats are deployed to the active environment
+  - Check EOS SDK logs for ingestion errors
+</Accordion>
+
+<Accordion title="Leaderboard is empty">
+  - Wait for stat ingestion to propagate (can take a few minutes)
+  - Verify the leaderboard is linked to the correct stat
+  - Check that players have ingested stats for that leaderboard
+  - Ensure the leaderboard definition is deployed
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Achievements" icon="trophy" href="/features/achievements">
+    Learn how achievements integrate with stats
+  </Card>
+  <Card title="HStats API" icon="code" href="/reference/hstats">
+    Complete stats API reference
+  </Card>
+  <Card title="HLeaderboards API" icon="code" href="/reference/hleaderboards">
+    Complete leaderboards API reference
+  </Card>
+</CardGroup>

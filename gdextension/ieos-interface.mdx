@@ -1,0 +1,462 @@
+---
+title: IEOS Singleton Interface
+description: Low-level C++ singleton for direct Epic Online Services SDK access
+---
+
+The IEOS class is a C++ singleton that provides direct bindings to the Epic Online Services SDK. It's the lowest-level interface available in the plugin, offering one-to-one mappings to EOS SDK functions.
+
+## Overview
+
+IEOS is defined in `ieos.h` and `ieos.cpp` and serves as the bridge between Godot and the native EOS SDK. It:
+
+- Extends `RefCounted` for Godot memory management
+- Implements the singleton pattern for global access
+- Exposes all EOS interface methods to GDScript
+- Manages EOS SDK handles and state
+- Emits signals for asynchronous callbacks
+
+## Getting the Singleton
+
+```gdscript
+# Get the IEOS singleton
+var ieos = IEOS.get_singleton()
+
+# Or access via EOS wrapper
+var ieos = EOS.get_instance()
+```
+
+## Core Methods
+
+### Platform Management
+
+<ParamField path="platform_interface_initialize(options)" type="int">
+  Initializes the EOS SDK. Must be called before creating a platform instance.
+  
+  **Parameters:**
+  - `options`: RefCounted containing initialization parameters
+  
+  **Returns:** EOS result code
+</ParamField>
+
+<ParamField path="platform_interface_create(options)" type="bool">
+  Creates the EOS platform instance. Required for all EOS functionality.
+  
+  **Parameters:**
+  - `options`: RefCounted containing platform configuration
+  
+  **Returns:** `true` if successful, `false` otherwise
+</ParamField>
+
+<ParamField path="platform_interface_release()" type="void">
+  Releases the platform instance and associated resources.
+</ParamField>
+
+<ParamField path="platform_interface_shutdown()" type="int">
+  Shuts down the EOS SDK. Should be called before application exit.
+  
+  **Returns:** EOS result code
+</ParamField>
+
+### Tick Method
+
+<ParamField path="tick()" type="void" static>
+  Processes EOS SDK callbacks and events. Must be called regularly (typically in `_process`).
+  
+  This is a static method that automatically operates on the singleton instance.
+</ParamField>
+
+```gdscript
+func _process(_delta):
+    IEOS.tick()
+```
+
+### Utility Methods
+
+<ParamField path="is_operation_complete(result_code)" type="bool">
+  Checks if an EOS operation has completed (successfully or with error).
+  
+  **Parameters:**
+  - `result_code`: Integer EOS result code
+  
+  **Returns:** `true` if operation is complete
+</ParamField>
+
+## Platform Interface Methods
+
+These methods manage platform-level functionality:
+
+- `platform_interface_get_active_country_code(user_id)`: Get user's country code
+- `platform_interface_get_active_locale_code(user_id)`: Get user's locale
+- `platform_interface_get_application_status()`: Get application state
+- `platform_interface_get_network_status()`: Get network connectivity state
+- `platform_interface_set_application_status(status)`: Update application state
+- `platform_interface_set_network_status(status)`: Update network state
+- `platform_interface_check_for_launcher_and_restart()`: Check for Epic Games Launcher
+
+## Service Interface Methods
+
+IEOS exposes methods for all EOS services. Each follows the pattern:
+
+```
+{service}_interface_{method_name}(options)
+```
+
+### Authentication (Auth)
+
+```gdscript
+# Login
+IEOS.auth_interface_login(options)
+
+# Logout
+IEOS.auth_interface_logout(options)
+
+# Get login status
+var status = IEOS.auth_interface_get_login_status(local_user_id)
+
+# Get logged in accounts
+var count = IEOS.auth_interface_get_logged_in_accounts_count()
+var account_id = IEOS.auth_interface_get_logged_in_account_by_index(0)
+
+# Copy tokens
+var token_result = IEOS.auth_interface_copy_user_auth_token(options, local_user_id)
+```
+
+**Signals:**
+- `auth_interface_login_callback(data: Dictionary)`
+- `auth_interface_logout_callback(data: Dictionary)`
+- `auth_interface_login_status_changed(data: Dictionary)`
+
+### Connect Interface
+
+```gdscript
+# Login with external credentials
+IEOS.connect_interface_login(options)
+
+# Create user
+IEOS.connect_interface_create_user(options)
+
+# Get login status
+var status = IEOS.connect_interface_get_login_status(local_user_id)
+
+# Query account mappings
+IEOS.connect_interface_query_product_user_id_mappings(options)
+```
+
+**Signals:**
+- `connect_interface_login_callback(data: Dictionary)`
+- `connect_interface_create_user_callback(data: Dictionary)`
+- `connect_interface_auth_expiration(data: Dictionary)`
+
+### Achievements Interface
+
+```gdscript
+# Query achievements
+IEOS.achievements_interface_query_definitions(options)
+IEOS.achievements_interface_query_player_achievements(options)
+
+# Get achievement data
+var count = IEOS.achievements_interface_get_achievement_definition_count(options)
+var achievement = IEOS.achievements_interface_copy_achievement_definition_v2_by_index(options)
+
+# Unlock achievements
+IEOS.achievements_interface_unlock_achievements(options)
+```
+
+**Signals:**
+- `achievements_interface_query_definitions_callback(data: Dictionary)`
+- `achievements_interface_query_player_achievements_callback(data: Dictionary)`
+- `achievements_interface_unlock_achievements_callback(data: Dictionary)`
+
+### Stats Interface
+
+```gdscript
+# Query stats
+IEOS.stats_interface_query_stats(options)
+
+# Get stats data
+var count = IEOS.stats_interface_get_stats_count(options)
+var stat = IEOS.stats_interface_copy_stat_by_name(options)
+
+# Update stats
+IEOS.stats_interface_ingest_stat(options)
+```
+
+**Signals:**
+- `stats_interface_query_stats_callback(data: Dictionary)`
+- `stats_interface_ingest_stat_callback(data: Dictionary)`
+
+### Lobby Interface
+
+```gdscript
+# Create lobby
+IEOS.lobby_interface_create_lobby(options)
+
+# Join lobby
+IEOS.lobby_interface_join_lobby(options)
+IEOS.lobby_interface_join_lobby_by_id(options)
+
+# Update lobby
+var modification = IEOS.lobby_interface_update_lobby_modification(options)
+IEOS.lobby_interface_update_lobby(update_options)
+
+# Leave lobby
+IEOS.lobby_interface_leave_lobby(options)
+```
+
+**Signals:**
+- `lobby_interface_create_lobby_callback(data: Dictionary)`
+- `lobby_interface_join_lobby_callback(data: Dictionary)`
+- `lobby_interface_lobby_update_received_callback(data: Dictionary)`
+- `lobby_interface_lobby_member_update_received_callback(data: Dictionary)`
+
+### Friends Interface
+
+```gdscript
+# Query friends
+IEOS.friends_interface_query_friends(options)
+
+# Get friends data
+var count = IEOS.friends_interface_get_friends_count(options)
+var friend_id = IEOS.friends_interface_get_friend_at_index(options)
+var status = IEOS.friends_interface_get_status(options)
+
+# Send invite
+IEOS.friends_interface_send_invite(options)
+```
+
+**Signals:**
+- `friends_interface_query_friends_callback(data: Dictionary)`
+- `friends_interface_friends_update_callback(data: Dictionary)`
+
+### P2P Interface
+
+```gdscript
+# Query NAT type
+IEOS.p2p_interface_query_nat_type()
+
+# Get NAT info
+var nat_type = IEOS.p2p_interface_get_nat_type()
+var relay_control = IEOS.p2p_interface_get_relay_control()
+
+# Configure P2P
+IEOS.p2p_interface_set_relay_control(control)
+IEOS.p2p_interface_set_port_range(options)
+```
+
+**Internal Methods** (used by EOSGMultiplayerPeer):
+- `_p2p_send_packet(options)`
+- `_p2p_receive_packet(options, ...)`
+- `_p2p_add_notify_peer_connection_request(options, callback)`
+
+### RTC Interface
+
+```gdscript
+# Join/leave RTC room
+IEOS.rtc_interface_join_room(options)
+IEOS.rtc_interface_leave_room(options)
+
+# Audio device management
+IEOS.rtc_audio_interface_query_input_devices_information(options)
+var count = IEOS.rtc_audio_interface_get_input_devices_count(options)
+var device = IEOS.rtc_audio_interface_copy_input_device_information_by_index(options)
+
+# Update audio settings
+IEOS.rtc_audio_interface_update_sending(options)
+IEOS.rtc_audio_interface_update_receiving(options)
+```
+
+**Signals:**
+- `rtc_interface_join_room_callback(data: Dictionary)`
+- `rtc_audio_interface_query_input_devices_information_callback(data: Dictionary)`
+- `rtc_audio_audio_input_state(data: Dictionary)`
+
+## Signal Naming Convention
+
+All IEOS signals follow the pattern:
+
+```
+{interface}_interface_{event}_callback
+```
+
+For example:
+- `auth_interface_login_callback`
+- `lobby_interface_create_lobby_callback`
+- `stats_interface_query_stats_callback`
+
+## Callback Data Structure
+
+All callback signals receive a Dictionary with at minimum:
+
+```gdscript
+{
+    "result_code": int,  # EOS result code
+    # ... additional data specific to the callback
+}
+```
+
+Common fields:
+- `local_user_id`: The user who initiated the operation
+- `client_data`: Custom data passed in the options
+- Operation-specific data (e.g., `lobby_id`, `achievement_id`)
+
+## Internal State
+
+IEOS maintains internal handles for all EOS interfaces:
+
+```cpp
+EOS_HAchievements s_achievementsInterface;
+EOS_HAuth s_authInterface;
+EOS_HConnect s_connectInterface;
+EOS_HFriends s_friendsInterface;
+EOS_HLobby s_lobbyInterface;
+EOS_HP2P s_p2pInterface;
+EOS_HPlatform s_platformInterface;
+// ... and many more
+```
+
+These are managed internally and not directly accessible from GDScript.
+
+## Validation Flag
+
+```gdscript
+# Check if EOS platform is initialized
+if IEOS.isEOSValid:
+    # Safe to use EOS features
+    pass
+```
+
+The `isEOSValid` property indicates whether the platform has been successfully created.
+
+## Anti-Cheat Interfaces
+
+IEOS provides both client and server anti-cheat interfaces:
+
+```gdscript
+# Server-side
+IEOS.anticheat_server_interface_begin_session(options)
+IEOS.anticheat_server_interface_register_client(options)
+IEOS.anticheat_server_interface_protect_message(options)
+
+# Client-side
+IEOS.anticheat_client_interface_begin_session(options)
+IEOS.anticheat_client_interface_receive_message_from_server(options)
+```
+
+**Signals:**
+- `anticheatserver_interface_message_to_client_callback(data: Dictionary)`
+- `anticheat_client_interface_message_to_server_callback(data: Dictionary)`
+
+## Storage Interfaces
+
+### Player Data Storage
+
+```gdscript
+# Query files
+IEOS.playerdatastorage_interface_query_file_list(options)
+
+# Read/write files
+var file_handle = IEOS.playerdatastorage_interface_read_file(options)
+IEOS.playerdatastorage_interface_write_file(options)
+
+# Get file metadata
+var metadata = IEOS.playerdatastorage_interface_copy_file_metadata_by_filename(options)
+```
+
+### Title Storage
+
+```gdscript
+# Query title files
+IEOS.titlestorage_interface_query_file_list(options)
+
+# Read files
+var file_handle = IEOS.titlestorage_interface_read_file(options)
+```
+
+## Logging Interface
+
+```gdscript
+# Set log level for a category
+IEOS.logging_interface_set_log_level(category, level)
+```
+
+**Signal:**
+- `logging_interface_callback(log_message: Dictionary)`
+
+## Version Interface
+
+```gdscript
+# Get SDK version
+var version = IEOS.version_interface_get_version()
+
+# Get version constants
+var constants = IEOS.version_interface_get_constants()
+```
+
+## Best Practices
+
+### Use the EOS Wrapper
+
+For most use cases, prefer the EOS wrapper classes over direct IEOS calls:
+
+```gdscript
+# Prefer this:
+EOS.Auth.AuthInterface.login(options)
+
+# Over this:
+IEOS.auth_interface_login(options)
+```
+
+The wrapper provides:
+- Type-safe option classes
+- Better IDE autocomplete
+- More idiomatic GDScript code
+
+### Connect Signals Early
+
+Connect to callback signals before making calls:
+
+```gdscript
+# Good
+IEOS.connect("auth_interface_login_callback", _on_login)
+IEOS.auth_interface_login(options)
+
+# Bad - might miss the callback
+IEOS.auth_interface_login(options)
+IEOS.connect("auth_interface_login_callback", _on_login)
+```
+
+### Tick Regularly
+
+Ensure `IEOS.tick()` is called every frame:
+
+```gdscript
+func _process(_delta):
+    IEOS.tick()
+```
+
+### Check Validity
+
+Verify platform is initialized before use:
+
+```gdscript
+if not IEOS.isEOSValid:
+    push_error("EOS platform not initialized")
+    return
+```
+
+## Comparison with EOS Wrapper
+
+| Feature | IEOS | EOS Wrapper |
+|---------|------|-------------|
+| Type safety | Minimal | Strong |
+| IDE support | Basic | Excellent |
+| Ease of use | Low | High |
+| Performance | Direct | Negligible overhead |
+| Documentation | SDK reference | Built-in |
+| Use case | Advanced/custom | Standard |
+
+## Next Steps
+
+- Learn about the [EOS Wrapper](/gdextension/eos-interface) for easier development
+- Review the [GDExtension API Overview](/gdextension/overview) for architecture
+- Check the [EOS SDK documentation](https://dev.epicgames.com/docs/epic-online-services) for detailed API information

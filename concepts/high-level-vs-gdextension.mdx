@@ -1,0 +1,169 @@
+---
+title: High Level vs GDExtension
+description: Understanding the two APIs available in EOSG and when to use each
+---
+
+Epic Online Services Godot (EOSG) provides two different ways to interact with Epic Online Services. This guide will help you understand the differences and choose the right approach for your project.
+
+## High Level EOS (Recommended)
+
+The High Level API provides easy-to-use methods and signals to interact with EOS. It abstracts away many complexities of the EOS SDK while providing access to its core functionality.
+
+### Main Classes
+
+The High Level API is organized into specialized autoload classes:
+
+- **HPlatform** - Platform initialization and setup
+- **HAuth** - Authentication and login
+- **HAchievements** - Achievement management
+- **HFriends** - Friends list and social features
+- **HStats** - Player statistics
+- **HLeaderboards** - Leaderboard queries and submissions
+- **HLobbies** - Lobby creation and management
+- **HP2P** - Peer-to-peer networking
+- **HLog** - Logging utilities
+
+### When to Use High Level API
+
+Choose the High Level API when:
+
+- You're new to Epic Online Services
+- You want to get started quickly
+- You need common EOS features without complex customization
+- You prefer a simpler, signal-based API
+- You want built-in retry logic and error handling
+
+### Example: High Level API
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Setup logging
+    HLog.log_level = HLog.LogLevel.INFO
+
+    # Create credentials
+    var credentials = HCredentials.new()
+    credentials.product_name = "My Game"
+    credentials.product_version = "1.0"
+    credentials.product_id = "YOUR_PRODUCT_ID"
+    credentials.sandbox_id = "YOUR_SANDBOX_ID"
+    credentials.deployment_id = "YOUR_DEPLOYMENT_ID"
+    credentials.client_id = "YOUR_CLIENT_ID"
+    credentials.client_secret = "YOUR_CLIENT_SECRET"
+
+    # Simple one-line setup
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        printerr("Failed to setup EOS")
+        return
+
+    # Connect to signals
+    HAuth.logged_in.connect(_on_logged_in)
+
+    # Login with dev tool
+    await HAuth.login_devtool_async("localhost:4545", "MyCredentialName")
+
+func _on_logged_in():
+    print("Logged in: ", HAuth.product_user_id)
+```
+
+## GDExtension EOS
+
+The GDExtension API provides low-level access to the Epic Online Services SDK through the `EOS` and `IEOS` classes. This gives you full control over the underlying EOS functionality.
+
+### Main Components
+
+- **EOS** - Contains all EOS SDK classes, enums, and interfaces
+- **IEOS** - Provides signals for EOS callbacks
+
+### When to Use GDExtension API
+
+Choose the GDExtension API when:
+
+- You need advanced EOS features not exposed in High Level API
+- You require fine-grained control over EOS behavior
+- You're porting existing EOS code from another engine
+- You're already familiar with the Epic Online Services SDK
+- You need to customize retry logic or error handling
+
+### Example: GDExtension API
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Initialize SDK
+    var init_opts = EOS.Platform.InitializeOptions.new()
+    init_opts.product_name = "My Game"
+    init_opts.product_version = "1.0"
+    
+    var init_res := EOS.Platform.PlatformInterface.initialize(init_opts)
+    if not EOS.is_success(init_res):
+        printerr("Failed to initialize: ", EOS.result_str(init_res))
+        return
+    
+    # Create platform
+    var create_opts = EOS.Platform.CreateOptions.new()
+    create_opts.product_id = "YOUR_PRODUCT_ID"
+    create_opts.sandbox_id = "YOUR_SANDBOX_ID"
+    create_opts.deployment_id = "YOUR_DEPLOYMENT_ID"
+    create_opts.client_id = "YOUR_CLIENT_ID"
+    create_opts.client_secret = "YOUR_CLIENT_SECRET"
+    
+    var create_res := EOS.Platform.PlatformInterface.create(create_opts)
+    if not EOS.is_success(create_res):
+        printerr("Failed to create platform: ", EOS.result_str(create_res))
+        return
+    
+    # Connect to login callback
+    IEOS.auth_interface_login_callback.connect(_on_auth_login)
+    
+    # Login
+    var login_opts = EOS.Auth.LoginOptions.new()
+    login_opts.credentials = EOS.Auth.Credentials.new()
+    login_opts.credentials.type = EOS.Auth.LoginCredentialType.Developer
+    login_opts.credentials.id = "localhost:4545"
+    login_opts.credentials.token = "MyCredentialName"
+    
+    EOS.Auth.AuthInterface.login(login_opts)
+
+func _on_auth_login(data: Dictionary):
+    if EOS.is_success(data.result_code):
+        print("Logged in: ", data.selected_account_id)
+    else:
+        printerr("Login failed: ", EOS.result_str(data.result_code))
+```
+
+## Mixing Both APIs
+
+You can use both APIs in the same project. For example, you might use the High Level API for most features but drop down to GDExtension for advanced functionality not yet exposed in the High Level API.
+
+```gdscript
+# Use High Level for setup
+await HPlatform.setup_eos_async(credentials)
+
+# Use High Level for common features
+await HAuth.login_devtool_async("localhost:4545", "MyCredentialName")
+
+# Drop down to GDExtension for advanced features
+var anti_cheat_opts = EOS.AntiCheatClient.AddNotifyMessageToServerOptions.new()
+EOS.AntiCheatClient.AntiCheatClientInterface.add_notify_message_to_server(anti_cheat_opts)
+```
+
+## Comparison
+
+| Feature | High Level API | GDExtension API |
+|---------|---------------|------------------|
+| Ease of use | Very easy | Requires EOS knowledge |
+| Setup complexity | Simple one-line setup | Multi-step initialization |
+| Error handling | Built-in retry logic | Manual handling required |
+| Code verbosity | Minimal | More verbose |
+| Flexibility | Limited to exposed features | Full SDK access |
+| Best for | Beginners, common use cases | Advanced users, custom needs |
+
+## Recommendation
+
+<Tip>
+Start with the **High Level API** for most projects. It handles the complexity of EOS initialization, provides automatic retry logic, and covers the most common use cases. Only use the GDExtension API when you need features not available in the High Level API or require fine-grained control.
+</Tip>

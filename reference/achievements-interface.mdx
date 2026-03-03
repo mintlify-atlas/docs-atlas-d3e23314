@@ -1,0 +1,175 @@
+---
+title: Achievements Interface
+description: API reference for the EOS Achievements Interface in Godot
+---
+
+The Achievements Interface manages player achievements, including querying definitions, unlocking achievements, and tracking player progress.
+
+## Overview
+
+The Achievements Interface allows you to:
+
+- Query achievement definitions configured in the Developer Portal
+- Track player achievement progress
+- Unlock achievements for players
+- Retrieve achievement information
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### achievements_interface_query_definitions
+
+```gdscript
+IEOS.achievements_interface_query_definitions(options: RefCounted) -> void
+```
+
+Queries all achievement definitions for the application.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `client_data` - Optional user data
+
+**Callback Signal:** `achievements_interface_query_definitions_callback`
+
+### achievements_interface_query_player_achievements
+
+```gdscript
+IEOS.achievements_interface_query_player_achievements(options: RefCounted) -> void
+```
+
+Queries player achievement progress for a specific user.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID making the request
+  - `target_user_id` - Product User ID to query
+  - `client_data` - Optional user data
+
+**Callback Signal:** `achievements_interface_query_player_achievements_callback`
+
+### achievements_interface_unlock_achievements
+
+```gdscript
+IEOS.achievements_interface_unlock_achievements(options: RefCounted) -> void
+```
+
+Unlocks one or more achievements for a player.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `user_id` - Product User ID
+  - `achievement_ids` - Array of achievement ID strings to unlock
+  - `client_data` - Optional user data
+
+**Callback Signal:** `achievements_interface_unlock_achievements_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `user_id` - Product User ID
+- `achievements_count` - Number of achievements unlocked
+
+### achievements_interface_get_achievement_definition_count
+
+```gdscript
+IEOS.achievements_interface_get_achievement_definition_count(options: RefCounted) -> int
+```
+
+Returns the cached count of achievement definitions.
+
+**Returns:** Number of achievement definitions
+
+### achievements_interface_copy_achievement_definition_v2_by_index
+
+```gdscript
+IEOS.achievements_interface_copy_achievement_definition_v2_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies an achievement definition by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `achievement_index` - Index of the achievement
+
+**Returns:** Dictionary with `result_code` and `definition_v2`
+
+### achievements_interface_copy_achievement_definition_v2_by_achievement_id
+
+```gdscript
+IEOS.achievements_interface_copy_achievement_definition_v2_by_achievement_id(options: RefCounted) -> Dictionary
+```
+
+Copies an achievement definition by achievement ID.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `achievement_id` - Achievement ID string
+
+**Returns:** Dictionary with `result_code` and `definition_v2`
+
+### achievements_interface_get_player_achievement_count
+
+```gdscript
+IEOS.achievements_interface_get_player_achievement_count(options: RefCounted) -> int
+```
+
+Returns the cached count of player achievements.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `user_id` - Product User ID
+
+**Returns:** Number of player achievements
+
+### achievements_interface_copy_player_achievement_by_index
+
+```gdscript
+IEOS.achievements_interface_copy_player_achievement_by_index(options: RefCounted) -> Dictionary
+```
+
+Copies player achievement data by index.
+
+**Returns:** Dictionary with `result_code` and `player_achievement`
+
+### achievements_interface_copy_player_achievement_by_achievement_id
+
+```gdscript
+IEOS.achievements_interface_copy_player_achievement_by_achievement_id(options: RefCounted) -> Dictionary
+```
+
+Copies player achievement data by achievement ID.
+
+**Returns:** Dictionary with `result_code` and `player_achievement`
+
+## Example Usage
+
+```gdscript
+# Query achievement definitions
+var query_options = {
+    "local_user_id": product_user_id
+}
+
+IEOS.achievements_interface_query_definitions_callback.connect(_on_definitions_queried)
+IEOS.achievements_interface_query_definitions(query_options)
+
+func _on_definitions_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var count = IEOS.achievements_interface_get_achievement_definition_count({})
+        for i in range(count):
+            var def = IEOS.achievements_interface_copy_achievement_definition_v2_by_index({"achievement_index": i})
+            print("Achievement: ", def.definition_v2)
+
+# Unlock an achievement
+var unlock_options = {
+    "user_id": product_user_id,
+    "achievement_ids": ["first_win", "speed_demon"]
+}
+
+IEOS.achievements_interface_unlock_achievements(unlock_options)
+```
+
+## See Also
+
+- [Stats Interface](/reference/stats-interface) - Player statistics
+- [Leaderboards Interface](/reference/leaderboards-interface) - Competitive rankings

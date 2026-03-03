@@ -1,80 +1,365 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Build your first "Hello EOS" example with Epic Online Services Godot
 ---
 
-## Get started in three steps
+# Quick Start
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through creating your first working example with Epic Online Services Godot. By the end, you'll have a game that initializes the EOS SDK, authenticates a user, and fetches their display name.
 
-### Step 1: Set up your local environment
+## Get Your EOS Credentials
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Before you begin, you'll need credentials from the Epic Developer Portal.
+
+<Steps>
+  <Step title="Log in to Epic Developer Portal">
+    Visit the [Epic Developer Portal](https://dev.epicgames.com/portal) and log in with your Epic Games account.
+  </Step>
+  <Step title="Create or Select a Product">
+    Either create a new product or select an existing one from your organization.
+  </Step>
+  <Step title="Copy Your Credentials">
+    Navigate to **Product Settings** and copy the following credentials:
+    - Product ID
+    - Sandbox ID
+    - Deployment ID
+    - Client ID
+    - Client Secret
+  </Step>
+  <Step title="Configure Client Policy (Important)">
+    Go to **Product Settings → Client Policies**:
+    - Select **Custom policy** for the Client policy type
+    - Enable **User is required**
+    - Enable all features and actions (for development)
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+    <Warning>
+      In production, you should grant minimal permissions based on what your game actually needs.
+    </Warning>
+  </Step>
+  <Step title="Enable Epic Account Services Permissions">
+    Go to **Epic Account Services → Permissions** and enable:
+    - Basic Profile
+    - Online Presence
+    - Friends
+  </Step>
+</Steps>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Keep your credentials secure! Never commit them to version control. Consider using environment variables or Godot's encryption features.
 </Note>
+
+## Create Your First EOS Script
+
+Let's create a simple "Hello EOS" script that demonstrates the core functionality.
+
+<Steps>
+  <Step title="Create a New Scene">
+    In Godot, create a new scene with a `Node` as the root. Save it as `Main.tscn`.
+  </Step>
+  <Step title="Attach a Script">
+    Attach a new script to the root node and name it `Main.gd`.
+  </Step>
+  <Step title="Add the Hello EOS Code">
+    Replace the script contents with the following code:
+
+```gdscript Main.gd
+extends Node
+
+# Replace these with your actual credentials from Epic Developer Portal
+const PRODUCT_NAME = "My Awesome Game"
+const PRODUCT_VERSION = "1.0"
+const PRODUCT_ID = "YOUR_PRODUCT_ID_HERE"
+const SANDBOX_ID = "YOUR_SANDBOX_ID_HERE"
+const DEPLOYMENT_ID = "YOUR_DEPLOYMENT_ID_HERE"
+const CLIENT_ID = "YOUR_CLIENT_ID_HERE"
+const CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
+
+func _ready() -> void:
+    print("Starting Hello EOS example...")
+    
+    # Setup logging
+    HLog.log_level = HLog.LogLevel.INFO
+    
+    # Create credentials
+    var credentials = HCredentials.new()
+    credentials.product_name = PRODUCT_NAME
+    credentials.product_version = PRODUCT_VERSION
+    credentials.product_id = PRODUCT_ID
+    credentials.sandbox_id = SANDBOX_ID
+    credentials.deployment_id = DEPLOYMENT_ID
+    credentials.client_id = CLIENT_ID
+    credentials.client_secret = CLIENT_SECRET
+    
+    # Initialize EOS Platform
+    print("Setting up EOS...")
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        printerr("Failed to setup EOS. See logs for error details")
+        return
+    
+    print("EOS setup successful!")
+    
+    # Get SDK version
+    var sdk_constants := EOS.Version.VersionInterface.get_constants()
+    print("EOS SDK Version: %s" % EOS.Version.VersionInterface.get_version())
+    
+    # Connect authentication signals
+    HAuth.logged_in.connect(_on_logged_in)
+    HAuth.login_error.connect(_on_login_error)
+    HAuth.display_name_changed.connect(_on_display_name_changed)
+    
+    # Login anonymously (easiest method for testing)
+    print("Logging in anonymously...")
+    await HAuth.login_anonymous_async()
+
+func _on_logged_in():
+    print("✓ Login successful!")
+    print("  Product User ID: %s" % HAuth.product_user_id)
+    print("  Display Name: %s" % HAuth.display_name)
+    print("\nHello EOS example completed successfully!")
+
+func _on_login_error(result_code: EOS.Result):
+    printerr("✗ Login failed: %s" % EOS.result_str(result_code))
+
+func _on_display_name_changed():
+    print("Display name updated: %s" % HAuth.display_name)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_CLOSE_REQUEST:
+        print("Shutting down EOS...")
+        EOS.Platform.PlatformInterface.release()
+        var res := EOS.Platform.PlatformInterface.shutdown()
+        if not EOS.is_success(res):
+            printerr("Failed to shutdown EOS: ", EOS.result_str(res))
+```
+  </Step>
+  <Step title="Add Your Credentials">
+    Replace the placeholder values (`YOUR_PRODUCT_ID_HERE`, etc.) with your actual credentials from the Epic Developer Portal.
+  </Step>
+</Steps>
+
+## Run Your First EOS Example
+
+<Steps>
+  <Step title="Set as Main Scene">
+    In Godot, go to **Project → Project Settings → Application → Run** and set `Main.tscn` as the Main Scene.
+  </Step>
+  <Step title="Run the Project">
+    Press F5 or click the Play button to run your project.
+  </Step>
+  <Step title="Check the Output">
+    Watch the Output panel at the bottom of the Godot editor. You should see:
+    
+    ```
+    Starting Hello EOS example...
+    Setting up EOS...
+    EOS setup successful!
+    EOS SDK Version: 1.18.1.2
+    Logging in anonymously...
+    ✓ Login successful!
+      Product User ID: abc123...
+      Display Name: 
+    
+    Hello EOS example completed successfully!
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Anonymous login is the simplest authentication method and perfect for testing. The display name will be empty for anonymous users.
+</Note>
+
+## Understanding the Code
+
+Let's break down what this example does:
+
+### 1. Setup Credentials
+
+```gdscript
+var credentials = HCredentials.new()
+credentials.product_name = PRODUCT_NAME
+credentials.product_version = PRODUCT_VERSION
+credentials.product_id = PRODUCT_ID
+// ... more credentials
+```
+
+The `HCredentials` class holds all the credentials needed to connect to Epic Online Services. These identify your game and authorize it to use EOS features.
+
+### 2. Initialize the Platform
+
+```gdscript
+var setup_success := await HPlatform.setup_eos_async(credentials)
+```
+
+The `HPlatform.setup_eos_async()` method initializes the EOS SDK and creates the platform instance. This must be done before using any other EOS features. The `await` keyword makes this asynchronous - the code waits for initialization to complete.
+
+### 3. Connect to Signals
+
+```gdscript
+HAuth.logged_in.connect(_on_logged_in)
+HAuth.login_error.connect(_on_login_error)
+```
+
+EOS uses Godot signals to notify your game about events. Here we're listening for successful login and login errors.
+
+### 4. Authenticate the User
+
+```gdscript
+await HAuth.login_anonymous_async()
+```
+
+This initiates an anonymous login, which doesn't require any user credentials. It's perfect for testing and single-player games.
+
+## Next Steps: Try Different Login Methods
+
+Now that you have a working example, try different authentication methods:
+
+### Login with DevAuth Tool (For Development)
+
+The DevAuth tool is perfect for local development and testing:
+
+<Steps>
+  <Step title="Download DevAuth Tool">
+    Download from [Epic's DevAuthTool](https://dev.epicgames.com/docs/services/en-US/DeveloperAuthenticationTool/index.html)
+  </Step>
+  <Step title="Run DevAuth Tool">
+    Start the tool - it runs on `localhost:4545` by default
+  </Step>
+  <Step title="Add a Credential">
+    Create a test credential (e.g., "Player1")
+  </Step>
+  <Step title="Update Your Code">
+    Replace the login line with:
+    
+```gdscript
+await HAuth.login_devtool_async("localhost:4545", "Player1")
+```
+  </Step>
+</Steps>
+
+### Login with Device ID
+
+Device ID login is useful for mobile games and provides persistent user identity:
+
+```gdscript
+await HAuth.login_device_id_async("UniqueDeviceID", "PlayerDisplayName")
+```
+
+## Expand Your Integration
+
+With authentication working, you can now explore other EOS features:
+
+<CardGroup cols={2}>
+  <Card title="Achievements" icon="trophy" href="/topics/achievements">
+    Unlock achievements and track player progress
+    
+    ```gdscript
+    var achievements = await HAchievements.get_all_achievements_async()
+    await HAchievements.unlock_achievement_async("achievement_001")
+    ```
+  </Card>
+  
+  <Card title="Leaderboards" icon="ranking-star" href="/topics/leaderboards">
+    Create competitive leaderboards
+    
+    ```gdscript
+    var records = await HLeaderboards.get_leaderboard_records_async("high_scores")
+    ```
+  </Card>
+  
+  <Card title="Stats" icon="chart-simple" href="/topics/stats">
+    Track player statistics
+    
+    ```gdscript
+    await HStats.ingest_stat_async("kills", 10)
+    var stats = await HStats.get_stats_async(["kills", "deaths"])
+    ```
+  </Card>
+  
+  <Card title="Friends" icon="user-group" href="/topics/friends">
+    Integrate social features
+    
+    ```gdscript
+    var friends = await HFriends.get_friends_async()
+    ```
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Setup failed with error code">
+    **Check your credentials** - Make sure all credentials from the Developer Portal are correct.
+    
+    **Check client policy** - Ensure you've configured the client policy to allow the features you're using.
+    
+    **Check the logs** - Set `HLog.log_level = HLog.LogLevel.DEBUG` for more detailed error messages.
+  </Accordion>
+  
+  <Accordion title="Login fails immediately">
+    **Anonymous login issues** - Make sure your client policy has the correct permissions.
+    
+    **DevAuth connection failed** - Ensure the DevAuth tool is running and accessible at `localhost:4545`.
+    
+    **Network issues** - Check your internet connection - EOS requires network access.
+  </Accordion>
+  
+  <Accordion title="No output in console">
+    **Check logging level** - Make sure `HLog.log_level` is set to `INFO` or `DEBUG`.
+    
+    **Check EOS logs** - You can also enable EOS SDK logging:
+    
+    ```gdscript
+    HPlatform.log_msg.connect(func(msg): print("SDK: ", msg.message))
+    HPlatform.set_eos_log_level(EOS.Logging.LogCategory.AllCategories, EOS.Logging.LogLevel.Info)
+    ```
+  </Accordion>
+  
+  <Accordion title="Product User ID is empty">
+    This usually means authentication didn't complete successfully. Check for error messages in the console.
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Secure Your Credentials" icon="lock">
+    Never commit credentials to version control. Use environment variables or Godot's script encryption when exporting.
+  </Card>
+  
+  <Card title="Handle Errors Gracefully" icon="triangle-exclamation">
+    Always check for errors and provide user-friendly feedback when EOS operations fail.
+  </Card>
+  
+  <Card title="Test Across Platforms" icon="mobile">
+    EOS behavior can vary by platform. Test on all your target platforms early.
+  </Card>
+  
+  <Card title="Use Proper Shutdown" icon="power-off">
+    Always call `EOS.Platform.PlatformInterface.release()` and `shutdown()` when your game closes.
+  </Card>
+</CardGroup>
+
+## Complete Example Project
+
+For a comprehensive example showcasing all EOSG features, check out the sample project included in the [GitHub repository](https://github.com/3ddelano/epic-online-services-godot). It includes:
+
+- Multiple authentication methods
+- Achievements system
+- Leaderboards
+- Lobbies and matchmaking
+- P2P networking with a simple multiplayer game
+- Voice chat
+- Stats tracking
+- And much more!
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Guide" icon="key" href="/topics/authentication">
+    Learn about all available authentication methods
+  </Card>
+  <Card title="Platform Initialization" icon="gear" href="/topics/initialization">
+    Deep dive into platform setup and configuration
+  </Card>
+</CardGroup>

@@ -1,0 +1,444 @@
+---
+title: HLobbies
+description: Create, search, and join multiplayer lobbies
+---
+
+## Overview
+
+HLobbies provides methods to create lobbies, search for existing lobbies, and join lobbies. It returns [HLobby](#hlobby) objects that can be used to manage lobby state and members.
+
+## Properties
+
+### max_search_results
+
+```gdscript
+var max_search_results: int = 25
+```
+
+The maximum number of lobbies to return in search calls (except for `create_search` and `search_async`).
+
+### presence_enabled
+
+```gdscript
+var presence_enabled: bool = true
+```
+
+Whether to show the lobby in the user's presence.
+
+### local_rtc_options
+
+```gdscript
+var local_rtc_options: Dictionary
+```
+
+Local RTC options for the lobby. You can override any of the following keys:
+- `flags: int` - A bitwise-or union of `EOS.RTC.JoinRoomFlags`
+- `use_manual_audio_input: bool`
+- `use_manual_audio_output: bool`
+- `local_audio_device_input_starts_muted: bool`
+
+Defaults to:
+```gdscript
+{
+    flags = EOS.RTC.JoinRoomFlags.EnableDataChannel
+}
+```
+
+## Methods
+
+### create_lobby_async
+
+```gdscript
+func create_lobby_async(opts: EOS.Lobby.CreateLobbyOptions) -> HLobby
+```
+
+Create a new lobby.
+
+**Parameters:**
+- `opts`: EOS.Lobby.CreateLobbyOptions object
+
+**Returns:** [HLobby](#hlobby) object or `null` on failure
+
+**Example:**
+```gdscript
+var opts = EOS.Lobby.CreateLobbyOptions.new()
+opts.max_lobby_members = 4
+opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+opts.bucket_id = "main_lobby"
+
+var lobby = await HLobbies.create_lobby_async(opts)
+if lobby:
+    print("Lobby created: ", lobby.lobby_id)
+```
+
+Source: [hlobbies.gd:37](https://github.com/YOUR_REPO/hlobbies.gd#L37)
+
+### join_by_id_async
+
+```gdscript
+func join_by_id_async(lobby_id: String) -> HLobby
+```
+
+Join an existing lobby by ID. Should only be used if the lobby has had Join-by-ID enabled.
+
+**Parameters:**
+- `lobby_id`: The lobby ID to join
+
+**Returns:** [HLobby](#hlobby) object or `null` on failure
+
+**Example:**
+```gdscript
+var lobby = await HLobbies.join_by_id_async("lobby_12345")
+if lobby:
+    print("Joined lobby: ", lobby.lobby_id)
+```
+
+Source: [hlobbies.gd:56](https://github.com/YOUR_REPO/hlobbies.gd#L56)
+
+<Note>
+Join-by-ID should only be enabled to support native invites on an integrated platform.
+</Note>
+
+### join_async
+
+```gdscript
+func join_async(lobby: HLobby) -> HLobby
+```
+
+Join an existing lobby, e.g., one returned from search.
+
+**Parameters:**
+- `lobby`: HLobby object from search results
+
+**Returns:** [HLobby](#hlobby) object or `null` on failure
+
+**Example:**
+```gdscript
+var lobbies = await HLobbies.search_by_bucket_id_async("main_lobby")
+if lobbies and lobbies.size() > 0:
+    var lobby = await HLobbies.join_async(lobbies[0])
+    if lobby:
+        print("Joined lobby successfully")
+```
+
+Source: [hlobbies.gd:79](https://github.com/YOUR_REPO/hlobbies.gd#L79)
+
+### search_by_product_user_id_async
+
+```gdscript
+func search_by_product_user_id_async(product_user_id: String) -> Array[HLobby]
+```
+
+Search for public lobbies that a user is in.
+
+**Parameters:**
+- `product_user_id`: Product user ID to search for
+
+**Returns:** Array of [HLobby](#hlobby) objects or `null` on failure
+
+Source: [hlobbies.gd:104](https://github.com/YOUR_REPO/hlobbies.gd#L104)
+
+### search_by_attribute_async
+
+```gdscript
+func search_by_attribute_async(attributes) -> Array[HLobby]
+```
+
+Search for public lobbies based on attributes.
+
+**Parameters:**
+- `attributes`: Dictionary or Array of dictionaries with keys:
+  - `key: String` - the key of the attribute
+  - `value: Variant` - the value of the attribute
+  - `comparison: EOS.ComparisonOp` - Type of comparison to make (default is `EOS.ComparisonOp.Equal`)
+
+**Returns:** Array of [HLobby](#hlobby) objects or `null` on failure
+
+**Example:**
+```gdscript
+# Search for lobbies with game_mode = "deathmatch"
+var lobbies = await HLobbies.search_by_attribute_async({
+    key = "game_mode",
+    value = "deathmatch"
+})
+
+# Search with multiple attributes (implicit AND)
+var lobbies = await HLobbies.search_by_attribute_async([
+    {key = "game_mode", value = "deathmatch"},
+    {key = "map", value = "desert"},
+    {key = "max_players", value = 4, comparison = EOS.ComparisonOp.LessThanOrEqual}
+])
+```
+
+Source: [hlobbies.gd:127](https://github.com/YOUR_REPO/hlobbies.gd#L127)
+
+### search_by_lobby_id_async
+
+```gdscript
+func search_by_lobby_id_async(lobby_id: String) -> Array[HLobby]
+```
+
+Search for lobby by ID. At most will return one lobby.
+
+**Parameters:**
+- `lobby_id`: The lobby ID to search for
+
+**Returns:** Array of [HLobby](#hlobby) objects (max 1) or `null` on failure
+
+Source: [hlobbies.gd:149](https://github.com/YOUR_REPO/hlobbies.gd#L149)
+
+### search_by_bucket_id_async
+
+```gdscript
+func search_by_bucket_id_async(bucket_id: String) -> Array[HLobby]
+```
+
+Search for lobbies by bucket ID.
+
+**Parameters:**
+- `bucket_id`: The bucket ID to search for
+
+**Returns:** Array of [HLobby](#hlobby) objects or `null` on failure
+
+**Example:**
+```gdscript
+var lobbies = await HLobbies.search_by_bucket_id_async("ranked_matches")
+for lobby in lobbies:
+    print("Lobby: ", lobby.lobby_id, " - ", lobby.members.size(), "/", lobby.max_members)
+```
+
+Source: [hlobbies.gd:165](https://github.com/YOUR_REPO/hlobbies.gd#L165)
+
+### create_search
+
+```gdscript
+func create_search(opts: EOS.Lobby.CreateLobbySearchOptions) -> EOSGLobbySearch
+```
+
+(Advanced) Create a new lobby search. Returns `EOSGLobbySearch` or `null`. Use [search_async](#search_async) to perform the search.
+
+**Parameters:**
+- `opts`: EOS.Lobby.CreateLobbySearchOptions object
+
+**Returns:** EOSGLobbySearch object or `null` on failure
+
+Source: [hlobbies.gd:175](https://github.com/YOUR_REPO/hlobbies.gd#L175)
+
+### search_async
+
+```gdscript
+func search_async(lobby_search: EOSGLobbySearch) -> Array[HLobby]
+```
+
+(Advanced) Perform the lobby search.
+
+**Parameters:**
+- `lobby_search`: EOSGLobbySearch object from `create_search()`
+
+**Returns:** Array of [HLobby](#hlobby) objects or `null` on failure
+
+Source: [hlobbies.gd:187](https://github.com/YOUR_REPO/hlobbies.gd#L187)
+
+## HLobby
+
+Represents a lobby instance with methods to manage and interact with the lobby.
+
+### Signals
+
+```gdscript
+signal lobby_updated
+signal kicked_from_lobby
+signal lobby_owner_changed
+signal rtc_data_received
+```
+
+### Properties
+
+```gdscript
+var lobby_id: String
+var owner_product_user_id: String
+var bucket_id: String
+var max_members: int
+var available_slots: int
+var members: Array[HLobbyMember]
+var allow_invites: bool
+var permission_level: EOS.Lobby.LobbyPermissionLevel
+var presence_enabled: bool
+var allow_host_migration: bool
+var attributes: Array  # Array of {key, value, visibility}
+var rtc_room_enabled: bool
+var rtc_room_name: String
+var rtc_room_connected: bool
+var allow_join_by_id: bool
+var rejoin_after_kick_requires_invite: bool
+var allowed_platform_ids: Array
+```
+
+### Methods
+
+#### is_valid
+
+```gdscript
+func is_valid() -> bool
+```
+
+Check whether the lobby is valid.
+
+#### is_owner
+
+```gdscript
+func is_owner(product_user_id = HAuth.product_user_id) -> bool
+```
+
+Check whether a user is the lobby owner. By default checks the current logged in user.
+
+#### get_member_by_product_user_id
+
+```gdscript
+func get_member_by_product_user_id(product_user_id: String) -> HLobbyMember
+```
+
+Returns a HLobbyMember based on product user id or `null`.
+
+#### get_current_member
+
+```gdscript
+func get_current_member() -> HLobbyMember
+```
+
+Returns the current lobby member (HLobbyMember) or `null`.
+
+#### get_owner
+
+```gdscript
+func get_owner() -> HLobbyMember
+```
+
+Returns the lobby owner (HLobbyMember) or `null`.
+
+#### get_attribute
+
+```gdscript
+func get_attribute(key: String) -> Dictionary
+```
+
+Returns attribute dictionary or empty dictionary if not found.
+
+#### add_attribute
+
+```gdscript
+func add_attribute(key: String, value: Variant, visibility = EOS.Lobby.LobbyAttributeVisibility.Public) -> bool
+```
+
+Add an attribute to this lobby. Make sure to call `update_async()` to actually update the lobby.
+
+#### add_current_member_attribute
+
+```gdscript
+func add_current_member_attribute(key: String, value: Variant, visibility = EOS.Lobby.LobbyAttributeVisibility.Public) -> bool
+```
+
+Add an attribute to the current user in the lobby. Make sure to call `update_async()` to actually update the lobby.
+
+#### update_async
+
+```gdscript
+func update_async() -> bool
+```
+
+Update the lobby if any changes are pending.
+
+#### leave_async
+
+```gdscript
+func leave_async() -> bool
+```
+
+Leave the lobby. Returns `true` if successful.
+
+#### destroy_async
+
+```gdscript
+func destroy_async() -> bool
+```
+
+Destroy the lobby. Only the owner can call this. Returns `true` if successful.
+
+#### rtc_send_data
+
+```gdscript
+func rtc_send_data(data: Variant) -> bool
+```
+
+Send data as a Variant to all users in the lobby's RTC data channel. Max packet size is `EOS.RTCData.MAX_PACKET_SIZE_BYTES` bytes.
+
+#### rtc_send_data_raw
+
+```gdscript
+func rtc_send_data_raw(data: PackedByteArray) -> bool
+```
+
+Send raw bytes as PackedByteArray to all users in the lobby's RTC data channel. Max packet size is `EOS.RTCData.MAX_PACKET_SIZE_BYTES` bytes.
+
+## Usage Example
+
+```gdscript
+extends Node
+
+var current_lobby: HLobby
+
+func create_and_host_lobby():
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+    opts.bucket_id = "main_lobby"
+    
+    current_lobby = await HLobbies.create_lobby_async(opts)
+    if current_lobby:
+        current_lobby.lobby_updated.connect(_on_lobby_updated)
+        current_lobby.kicked_from_lobby.connect(_on_kicked)
+        
+        # Add custom attributes
+        current_lobby.add_attribute("game_mode", "deathmatch")
+        current_lobby.add_attribute("map", "desert")
+        await current_lobby.update_async()
+        
+        print("Lobby created: ", current_lobby.lobby_id)
+
+func find_and_join_lobby():
+    var lobbies = await HLobbies.search_by_bucket_id_async("main_lobby")
+    
+    if lobbies and lobbies.size() > 0:
+        current_lobby = await HLobbies.join_async(lobbies[0])
+        if current_lobby:
+            current_lobby.lobby_updated.connect(_on_lobby_updated)
+            current_lobby.kicked_from_lobby.connect(_on_kicked)
+            print("Joined lobby: ", current_lobby.lobby_id)
+
+func _on_lobby_updated():
+    print("Lobby updated: ", current_lobby.members.size(), " members")
+    for member in current_lobby.members:
+        print("  - ", member.product_user_id)
+
+func _on_kicked():
+    print("Kicked from lobby")
+    current_lobby = null
+
+func send_message_to_lobby(message: String):
+    if current_lobby and current_lobby.rtc_room_connected:
+        var data = {"type": "chat", "message": message}
+        current_lobby.rtc_send_data(data)
+```
+
+## Best Practices
+
+1. **Use bucket IDs**: Organize lobbies into buckets for easier searching and filtering
+2. **Set appropriate permissions**: Choose the right permission level for your lobby type
+3. **Monitor lobby updates**: Connect to `lobby_updated` signal to keep UI in sync
+4. **Clean up**: Always call `leave_async()` or `destroy_async()` when done with a lobby
+5. **Handle search results**: Check if search results are null or empty before accessing
+6. **Use attributes**: Store custom lobby metadata using attributes for flexible searching
+
+<Warning>
+Always check if a lobby is valid before performing operations on it using `is_valid()`.
+</Warning>

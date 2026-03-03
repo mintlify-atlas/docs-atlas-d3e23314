@@ -1,0 +1,362 @@
+---
+title: Anti-cheat
+description: Protect your game from cheaters with Epic Online Services Anti-Cheat
+---
+
+Epic Online Services provides client and server-side anti-cheat protection to help keep your multiplayer games fair. EOSG exposes anti-cheat functionality through the AntiCheat interfaces.
+
+## Overview
+
+EOS Anti-Cheat features:
+- **Client Protection**: Detect and prevent common cheating methods
+- **Server Validation**: Verify client integrity from the server
+- **Behavior Analysis**: Identify suspicious player behavior
+- **Action Notifications**: Get notified when cheating is detected
+- **Cross-Platform**: Works on Windows, Linux, and more
+
+<Warning>
+Anti-cheat requires both client and server integration for full protection. Client-only games should focus on client-side protections.
+</Warning>
+
+## Architecture
+
+EOS Anti-Cheat has two components:
+
+### 1. Anti-Cheat Client
+
+Runs on the player's machine:
+- Monitors game memory and processes
+- Detects common cheating tools
+- Reports findings to the server
+- Minimal performance impact
+
+### 2. Anti-Cheat Server
+
+Runs on your game server:
+- Validates client integrity
+- Receives client reports
+- Makes decisions about player actions (kick, ban, etc.)
+- Provides you with violation notifications
+
+## Client-Side Integration
+
+### Initialize Anti-Cheat Client
+
+```gdscript
+func setup_anticheat_client():
+    # Initialize anti-cheat client
+    var opts = EOS.AntiCheatClient.AddNotifyMessageToServerOptions.new()
+    opts.notification_fn = _on_anticheat_message_to_server
+    
+    # Register callback for messages to server
+    var notify_id = EOS.AntiCheatClient.AntiCheatClientInterface.add_notify_message_to_server(opts)
+    
+    # Begin session
+    var begin_opts = EOS.AntiCheatClient.BeginSessionOptions.new()
+    begin_opts.local_user_id = HAuth.product_user_id
+    begin_opts.mode = EOS.AntiCheatClient.AntiCheatClientMode.ClientServer  # or PeerToPeer
+    
+    var result = EOS.AntiCheatClient.AntiCheatClientInterface.begin_session(begin_opts)
+    if EOS.is_success(result):
+        print("Anti-cheat client started")
+    else:
+        printerr("Failed to start anti-cheat: %s" % EOS.result_str(result))
+
+func _on_anticheat_message_to_server(data: Dictionary):
+    # Forward anti-cheat messages to server
+    var message = data.message_data
+    send_to_server({type = "anticheat", data = message})
+```
+
+### Register Game Assets
+
+Tell anti-cheat which files should be protected:
+
+```gdscript
+func register_protected_files():
+    # Register game executable
+    var exe_path = OS.get_executable_path()
+    
+    var opts = EOS.AntiCheatClient.AddExternalIntegrityCatalogOptions.new()
+    opts.path_on_disk = exe_path
+    
+    var result = EOS.AntiCheatClient.AntiCheatClientInterface.add_external_integrity_catalog(opts)
+    if EOS.is_success(result):
+        print("Registered game executable for integrity checks")
+```
+
+### End Session
+
+```gdscript
+func shutdown_anticheat_client():
+    var opts = EOS.AntiCheatClient.EndSessionOptions.new()
+    var result = EOS.AntiCheatClient.AntiCheatClientInterface.end_session(opts)
+    if EOS.is_success(result):
+        print("Anti-cheat client stopped")
+```
+
+## Server-Side Integration
+
+### Initialize Anti-Cheat Server
+
+```gdscript
+func setup_anticheat_server():
+    # Register for violation notifications
+    var notify_opts = EOS.AntiCheatServer.AddNotifyMessageToPeerOptions.new()
+    notify_opts.notification_fn = _on_anticheat_message_to_peer
+    
+    var message_id = EOS.AntiCheatServer.AntiCheatServerInterface.add_notify_message_to_peer(notify_opts)
+    
+    # Register for client action notifications
+    var action_opts = EOS.AntiCheatServer.AddNotifyClientActionRequiredOptions.new()
+    action_opts.notification_fn = _on_client_action_required
+    
+    var action_id = EOS.AntiCheatServer.AntiCheatServerInterface.add_notify_client_action_required(action_opts)
+    
+    # Begin session
+    var begin_opts = EOS.AntiCheatServer.BeginSessionOptions.new()
+    begin_opts.register_timeout_seconds = 60
+    begin_opts.server_name = "MyGameServer"
+    begin_opts.enable_gameplay_data = true
+    
+    var result = EOS.AntiCheatServer.AntiCheatServerInterface.begin_session(begin_opts)
+    if EOS.is_success(result):
+        print("Anti-cheat server started")
+
+func _on_anticheat_message_to_peer(data: Dictionary):
+    # Forward message to specific client
+    var peer_id = data.peer_handle
+    var message = data.message_data
+    send_to_client(peer_id, {type = "anticheat", data = message})
+
+func _on_client_action_required(data: Dictionary):
+    var peer_id = data.peer_handle
+    var action = data.action_required
+    var reason_code = data.action_reason_code
+    var reason_details = data.action_reason_details_string
+    
+    match action:
+        EOS.AntiCheatServer.AntiCheatClientAction.RemovePlayer:
+            print("Cheater detected! Kicking player: %s" % peer_id)
+            print("Reason: %s (%d)" % [reason_details, reason_code])
+            kick_player(peer_id)
+```
+
+### Register Players
+
+Register each player when they connect:
+
+```gdscript
+func register_player(peer_id: int, user_id: String):
+    var opts = EOS.AntiCheatServer.RegisterClientOptions.new()
+    opts.client_handle = peer_id  # Your internal peer ID
+    opts.client_type = EOS.AntiCheatServer.AntiCheatClientType.ProtectedClient
+    opts.client_platform = EOS.AntiCheatServer.AntiCheatClientPlatform.Windows
+    opts.account_id = user_id
+    
+    var result = EOS.AntiCheatServer.AntiCheatServerInterface.register_client(opts)
+    if EOS.is_success(result):
+        print("Registered player with anti-cheat: %s" % user_id)
+
+func unregister_player(peer_id: int):
+    var opts = EOS.AntiCheatServer.UnregisterClientOptions.new()
+    opts.client_handle = peer_id
+    
+    EOS.AntiCheatServer.AntiCheatServerInterface.unregister_client(opts)
+```
+
+### Receive Client Messages
+
+When clients send anti-cheat messages:
+
+```gdscript
+func _on_client_anticheat_message(peer_id: int, message_data: PackedByteArray):
+    var opts = EOS.AntiCheatServer.ReceiveMessageFromClientOptions.new()
+    opts.client_handle = peer_id
+    opts.data = message_data
+    
+    var result = EOS.AntiCheatServer.AntiCheatServerInterface.receive_message_from_client(opts)
+    if not EOS.is_success(result):
+        printerr("Failed to process anti-cheat message from client %d" % peer_id)
+```
+
+## Gameplay Data Protection
+
+Report important gameplay events for behavior analysis:
+
+### Report Player Movement
+
+```gdscript
+func report_player_movement(peer_id: int, position: Vector3, velocity: Vector3):
+    var opts = EOS.AntiCheatServer.LogPlayerPositionOptions.new()
+    opts.client_handle = peer_id
+    opts.position = {x = position.x, y = position.y, z = position.z}
+    opts.velocity = {x = velocity.x, y = velocity.y, z = velocity.z}
+    
+    EOS.AntiCheatServer.AntiCheatServerInterface.log_player_position(opts)
+```
+
+### Report Player Actions
+
+```gdscript
+func report_player_shot(shooter_id: int, weapon_id: String):
+    var opts = EOS.AntiCheatServer.LogPlayerUseWeaponOptions.new()
+    opts.client_handle = shooter_id
+    opts.weapon_name = weapon_id
+    
+    EOS.AntiCheatServer.AntiCheatServerInterface.log_player_use_weapon(opts)
+
+func report_player_damage(attacker_id: int, victim_id: int, damage: float):
+    var opts = EOS.AntiCheatServer.LogPlayerTakeDamageOptions.new()
+    opts.victim_client_handle = victim_id
+    opts.victim_position = get_player_position(victim_id)
+    opts.attacker_client_handle = attacker_id
+    opts.attacker_position = get_player_position(attacker_id)
+    opts.damage_taken = int(damage)
+    opts.damage_type = "bullet"  # or "explosion", "melee", etc.
+    
+    EOS.AntiCheatServer.AntiCheatServerInterface.log_player_take_damage(opts)
+```
+
+## Complete Server Integration Example
+
+```gdscript
+extends Node
+
+var registered_players = {}  # peer_id -> user_id
+
+func _ready():
+    if multiplayer.is_server():
+        setup_server_anticheat()
+        
+        multiplayer.peer_connected.connect(_on_peer_connected)
+        multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+
+func setup_server_anticheat():
+    # Set up callbacks
+    var msg_opts = EOS.AntiCheatServer.AddNotifyMessageToPeerOptions.new()
+    msg_opts.notification_fn = _on_anticheat_message_to_peer
+    EOS.AntiCheatServer.AntiCheatServerInterface.add_notify_message_to_peer(msg_opts)
+    
+    var action_opts = EOS.AntiCheatServer.AddNotifyClientActionRequiredOptions.new()
+    action_opts.notification_fn = _on_client_action_required
+    EOS.AntiCheatServer.AntiCheatServerInterface.add_notify_client_action_required(action_opts)
+    
+    # Begin session
+    var begin_opts = EOS.AntiCheatServer.BeginSessionOptions.new()
+    begin_opts.register_timeout_seconds = 60
+    begin_opts.server_name = "Game Server 1"
+    begin_opts.enable_gameplay_data = true
+    
+    var result = EOS.AntiCheatServer.AntiCheatServerInterface.begin_session(begin_opts)
+    if EOS.is_success(result):
+        print("Anti-cheat server initialized")
+
+func _on_peer_connected(peer_id: int):
+    # Wait for player to authenticate
+    await get_tree().create_timer(1.0).timeout
+    
+    # Get player's EOS user ID
+    var user_id = get_player_user_id(peer_id)
+    
+    # Register with anti-cheat
+    var opts = EOS.AntiCheatServer.RegisterClientOptions.new()
+    opts.client_handle = peer_id
+    opts.client_type = EOS.AntiCheatServer.AntiCheatClientType.ProtectedClient
+    opts.client_platform = EOS.AntiCheatServer.AntiCheatClientPlatform.Windows
+    opts.account_id = user_id
+    
+    var result = EOS.AntiCheatServer.AntiCheatServerInterface.register_client(opts)
+    if EOS.is_success(result):
+        registered_players[peer_id] = user_id
+        print("Player %d registered with anti-cheat" % peer_id)
+
+func _on_peer_disconnected(peer_id: int):
+    if peer_id in registered_players:
+        var opts = EOS.AntiCheatServer.UnregisterClientOptions.new()
+        opts.client_handle = peer_id
+        EOS.AntiCheatServer.AntiCheatServerInterface.unregister_client(opts)
+        
+        registered_players.erase(peer_id)
+        print("Player %d unregistered from anti-cheat" % peer_id)
+
+func _on_anticheat_message_to_peer(data: Dictionary):
+    var peer_id = data.peer_handle
+    var message = data.message_data
+    
+    # Send to client using your networking system
+    rpc_id(peer_id, "receive_anticheat_message", message)
+
+func _on_client_action_required(data: Dictionary):
+    var peer_id = data.peer_handle
+    var action = data.action_required
+    var reason = data.action_reason_details_string
+    
+    print("Anti-cheat action required for player %d: %s" % [peer_id, reason])
+    
+    match action:
+        EOS.AntiCheatServer.AntiCheatClientAction.RemovePlayer:
+            print("Kicking cheater: %d" % peer_id)
+            multiplayer.disconnect_peer(peer_id)
+
+@rpc("any_peer")
+func send_anticheat_message(message_data: PackedByteArray):
+    var peer_id = multiplayer.get_remote_sender_id()
+    
+    var opts = EOS.AntiCheatServer.ReceiveMessageFromClientOptions.new()
+    opts.client_handle = peer_id
+    opts.data = message_data
+    
+    EOS.AntiCheatServer.AntiCheatServerInterface.receive_message_from_client(opts)
+
+func get_player_user_id(peer_id: int) -> String:
+    # Your implementation to get EOS user ID for a peer
+    return ""  # Replace with actual user ID
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Both Sides" icon="shield">
+    Implement both client and server anti-cheat for maximum protection
+  </Card>
+  <Card title="Log Gameplay Data" icon="chart-line">
+    Report player actions to improve behavior detection
+  </Card>
+  <Card title="Act on Violations" icon="gavel">
+    Always respond to client action notifications
+  </Card>
+  <Card title="Test Thoroughly" icon="vial">
+    Test anti-cheat integration with legitimate gameplay first
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Client fails to initialize">
+  - Verify anti-cheat binaries are included in your build
+  - Check that the user is logged in before initializing
+  - Ensure your game has necessary permissions
+  - Review EOS SDK logs for detailed errors
+</Accordion>
+
+<Accordion title="Server doesn't receive messages">
+  - Verify messages are being forwarded from client to server
+  - Check that clients are properly registered
+  - Ensure network messages include anti-cheat data
+  - Confirm both client and server sessions are active
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="P2P Networking" icon="network-wired" href="/features/p2p-networking">
+    Integrate anti-cheat with multiplayer networking
+  </Card>
+  <Card title="Anti-Cheat Client API" icon="code" href="/reference/anticheat-interface">
+    Complete client-side API reference
+  </Card>
+  <Card title="Anti-Cheat Server API" icon="server" href="/reference/anticheat-interface">
+    Complete server-side API reference
+  </Card>
+</CardGroup>

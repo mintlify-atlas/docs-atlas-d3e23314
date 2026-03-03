@@ -1,0 +1,463 @@
+---
+title: Ecommerce
+description: Integrate Epic Games Store purchases and in-game transactions with Epic Online Services
+---
+
+Epic Online Services provides ecommerce features for handling in-game purchases, virtual currency, and Epic Games Store integration. EOSG exposes these through the Ecom interface.
+
+## Overview
+
+EOS Ecommerce features:
+- **Catalog Queries**: Browse available items and offers
+- **Purchase Flow**: Handle in-game purchases
+- **Ownership Verification**: Check what items a player owns
+- **Entitlements**: Manage permanent unlocks (DLC, expansions)
+- **Transactions**: Track purchase history
+
+<Warning>
+Ecommerce features require Epic Account Services authentication and proper configuration in the Epic Games Developer Portal.
+</Warning>
+
+## Prerequisites
+
+1. **Epic Account Login**: Players must login with Epic Account Services
+2. **Sandbox Configuration**: Configure your product's ecommerce sandbox in the Developer Portal
+3. **Items and Offers**: Define items, offers, and pricing in the Developer Portal
+
+## Querying the Catalog
+
+### Get Available Offers
+
+```gdscript
+func query_store_offers():
+    var opts = EOS.Ecom.QueryOffersOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    
+    EOS.Ecom.EcomInterface.query_offers(opts)
+    var result = await IEOS.ecom_interface_query_offers_callback
+    
+    if not EOS.is_success(result):
+        printerr("Failed to query offers: %s" % EOS.result_str(result))
+        return []
+    
+    # Get offer count
+    var count_opts = EOS.Ecom.GetOfferCountOptions.new()
+    count_opts.local_user_id = HAuth.epic_account_id
+    var offer_count = EOS.Ecom.EcomInterface.get_offer_count(count_opts)
+    
+    print("Found %d offers" % offer_count)
+    
+    # Get each offer
+    var offers = []
+    for i in range(offer_count):
+        var copy_opts = EOS.Ecom.CopyOfferByIndexOptions.new()
+        copy_opts.local_user_id = HAuth.epic_account_id
+        copy_opts.offer_index = i
+        
+        var offer_result = EOS.Ecom.EcomInterface.copy_offer_by_index(copy_opts)
+        if EOS.is_success(offer_result):
+            offers.append(offer_result.offer)
+    
+    return offers
+
+func display_offers(offers: Array):
+    for offer in offers:
+        print("Offer: %s" % offer.title)
+        print("  ID: %s" % offer.id)
+        print("  Description: %s" % offer.description)
+        print("  Price: %d %s" % [offer.original_price, offer.currency_code])
+        
+        if offer.discounted_price < offer.original_price:
+            var discount = ((offer.original_price - offer.discounted_price) / float(offer.original_price)) * 100
+            print("  Sale Price: %d %s (%.0f%% off!)" % [offer.discounted_price, offer.currency_code, discount])
+```
+
+### Get Specific Offer by ID
+
+```gdscript
+func get_offer_details(offer_id: String):
+    var opts = EOS.Ecom.CopyOfferByIdOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.offer_id = offer_id
+    
+    var result = EOS.Ecom.EcomInterface.copy_offer_by_id(opts)
+    if EOS.is_success(result):
+        return result.offer
+    
+    return null
+```
+
+## Making Purchases
+
+### Checkout
+
+```gdscript
+func purchase_offer(offer_id: String):
+    var opts = EOS.Ecom.CheckoutOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.entries = [
+        {
+            offer_id = offer_id
+        }
+    ]
+    
+    EOS.Ecom.EcomInterface.checkout(opts)
+    var result = await IEOS.ecom_interface_checkout_callback
+    
+    if EOS.is_success(result):
+        print("Purchase successful!")
+        print("Transaction ID: %s" % result.transaction_id)
+        return true
+    else:
+        printerr("Purchase failed: %s" % EOS.result_str(result))
+        return false
+```
+
+### Purchase Multiple Items
+
+```gdscript
+func purchase_bundle(offer_ids: Array):
+    var entries = []
+    for offer_id in offer_ids:
+        entries.append({offer_id = offer_id})
+    
+    var opts = EOS.Ecom.CheckoutOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.entries = entries
+    opts.override_catalog_namespace = ""  # Optional: use specific catalog namespace
+    
+    EOS.Ecom.EcomInterface.checkout(opts)
+    var result = await IEOS.ecom_interface_checkout_callback
+    
+    return EOS.is_success(result)
+```
+
+## Querying Ownership
+
+### Check Entitlements
+
+Entitlements are permanent items the player owns (DLC, game passes, etc.):
+
+```gdscript
+func query_entitlements():
+    var opts = EOS.Ecom.QueryEntitlementsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.include_redeemed = true
+    
+    EOS.Ecom.EcomInterface.query_entitlements(opts)
+    var result = await IEOS.ecom_interface_query_entitlements_callback
+    
+    if not EOS.is_success(result):
+        printerr("Failed to query entitlements")
+        return []
+    
+    # Get entitlement count
+    var count_opts = EOS.Ecom.GetEntitlementsCountOptions.new()
+    count_opts.local_user_id = HAuth.epic_account_id
+    var count = EOS.Ecom.EcomInterface.get_entitlements_count(count_opts)
+    
+    # Get entitlements
+    var entitlements = []
+    for i in range(count):
+        var copy_opts = EOS.Ecom.CopyEntitlementByIndexOptions.new()
+        copy_opts.local_user_id = HAuth.epic_account_id
+        copy_opts.entitlement_index = i
+        
+        var entitlement_result = EOS.Ecom.EcomInterface.copy_entitlement_by_index(copy_opts)
+        if EOS.is_success(entitlement_result):
+            entitlements.append(entitlement_result.entitlement)
+    
+    return entitlements
+
+func player_owns_dlc(dlc_entitlement_id: String) -> bool:
+    var entitlements = await query_entitlements()
+    
+    for entitlement in entitlements:
+        if entitlement.entitlement_id == dlc_entitlement_id:
+            return true
+    
+    return false
+```
+
+### Consume Entitlements
+
+For consumable items (potions, lives, etc.):
+
+```gdscript
+func consume_item(entitlement_id: String, quantity: int = 1):
+    var opts = EOS.Ecom.RedeemEntitlementsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.entitlement_ids = [entitlement_id]
+    
+    EOS.Ecom.EcomInterface.redeem_entitlements(opts)
+    var result = await IEOS.ecom_interface_redeem_entitlements_callback
+    
+    if EOS.is_success(result):
+        print("Consumed %d of item %s" % [quantity, entitlement_id])
+        return true
+    else:
+        printerr("Failed to consume item")
+        return false
+```
+
+## Transaction History
+
+```gdscript
+func get_transaction_history():
+    var opts = EOS.Ecom.QueryOwnershipOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.catalog_item_ids = []  # Empty = query all
+    
+    EOS.Ecom.EcomInterface.query_ownership(opts)
+    var result = await IEOS.ecom_interface_query_ownership_callback
+    
+    if EOS.is_success(result):
+        print("Transaction history retrieved")
+        # Transaction details available through entitlements
+```
+
+## Complete Store UI Example
+
+```gdscript
+extends Control
+
+var available_offers = []
+var owned_entitlements = []
+
+@onready var store_grid = $StorePanel/OfferGrid
+@onready var owned_list = $OwnedPanel/OwnedList
+@onready var purchase_dialog = $PurchaseDialog
+
+func _ready():
+    refresh_store()
+
+func refresh_store():
+    # Query what's available
+    available_offers = await query_offers()
+    
+    # Query what player owns
+    owned_entitlements = await query_entitlements()
+    
+    display_store()
+    display_owned_items()
+
+func query_offers() -> Array:
+    var opts = EOS.Ecom.QueryOffersOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    
+    EOS.Ecom.EcomInterface.query_offers(opts)
+    var result = await IEOS.ecom_interface_query_offers_callback
+    
+    if not EOS.is_success(result):
+        return []
+    
+    var count_opts = EOS.Ecom.GetOfferCountOptions.new()
+    count_opts.local_user_id = HAuth.epic_account_id
+    var count = EOS.Ecom.EcomInterface.get_offer_count(count_opts)
+    
+    var offers = []
+    for i in range(count):
+        var copy_opts = EOS.Ecom.CopyOfferByIndexOptions.new()
+        copy_opts.local_user_id = HAuth.epic_account_id
+        copy_opts.offer_index = i
+        
+        var offer_result = EOS.Ecom.EcomInterface.copy_offer_by_index(copy_opts)
+        if EOS.is_success(offer_result):
+            offers.append(offer_result.offer)
+    
+    return offers
+
+func query_entitlements() -> Array:
+    var opts = EOS.Ecom.QueryEntitlementsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    
+    EOS.Ecom.EcomInterface.query_entitlements(opts)
+    var result = await IEOS.ecom_interface_query_entitlements_callback
+    
+    if not EOS.is_success(result):
+        return []
+    
+    var count_opts = EOS.Ecom.GetEntitlementsCountOptions.new()
+    count_opts.local_user_id = HAuth.epic_account_id
+    var count = EOS.Ecom.EcomInterface.get_entitlements_count(count_opts)
+    
+    var entitlements = []
+    for i in range(count):
+        var copy_opts = EOS.Ecom.CopyEntitlementByIndexOptions.new()
+        copy_opts.local_user_id = HAuth.epic_account_id
+        copy_opts.entitlement_index = i
+        
+        var ent_result = EOS.Ecom.EcomInterface.copy_entitlement_by_index(copy_opts)
+        if EOS.is_success(ent_result):
+            entitlements.append(ent_result.entitlement)
+    
+    return entitlements
+
+func display_store():
+    for child in store_grid.get_children():
+        child.queue_free()
+    
+    for offer in available_offers:
+        create_offer_card(offer)
+
+func create_offer_card(offer: Dictionary):
+    var card = preload("res://store_item_card.tscn").instantiate()
+    
+    card.set_title(offer.title)
+    card.set_description(offer.description)
+    
+    # Check if on sale
+    if offer.discounted_price < offer.original_price:
+        card.set_price(offer.discounted_price, offer.currency_code)
+        card.set_original_price(offer.original_price)
+        card.show_sale_badge()
+    else:
+        card.set_price(offer.original_price, offer.currency_code)
+    
+    # Check if already owned
+    if is_offer_owned(offer.id):
+        card.set_as_owned()
+    else:
+        card.purchase_button.pressed.connect(func(): show_purchase_dialog(offer))
+    
+    store_grid.add_child(card)
+
+func is_offer_owned(offer_id: String) -> bool:
+    for entitlement in owned_entitlements:
+        if entitlement.catalog_item_id == offer_id:
+            return true
+    return false
+
+func show_purchase_dialog(offer: Dictionary):
+    purchase_dialog.set_offer_info(offer)
+    purchase_dialog.popup_centered()
+    
+    var confirmed = await purchase_dialog.confirmed
+    if confirmed:
+        make_purchase(offer.id)
+
+func make_purchase(offer_id: String):
+    var opts = EOS.Ecom.CheckoutOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.entries = [{offer_id = offer_id}]
+    
+    EOS.Ecom.EcomInterface.checkout(opts)
+    var result = await IEOS.ecom_interface_checkout_callback
+    
+    if EOS.is_success(result):
+        show_success_message("Purchase successful!")
+        refresh_store()  # Refresh to show owned status
+    else:
+        show_error_message("Purchase failed: %s" % EOS.result_str(result))
+
+func display_owned_items():
+    for child in owned_list.get_children():
+        child.queue_free()
+    
+    if owned_entitlements.is_empty():
+        var label = Label.new()
+        label.text = "No items owned yet"
+        owned_list.add_child(label)
+        return
+    
+    for entitlement in owned_entitlements:
+        var entry = HBoxContainer.new()
+        
+        var name_label = Label.new()
+        name_label.text = entitlement.entitlement_name
+        entry.add_child(name_label)
+        
+        owned_list.add_child(entry)
+
+func show_success_message(message: String):
+    $SuccessDialog.dialog_text = message
+    $SuccessDialog.popup_centered()
+
+func show_error_message(message: String):
+    $ErrorDialog.dialog_text = message
+    $ErrorDialog.popup_centered()
+```
+
+## Testing Ecommerce
+
+### Sandbox Testing
+
+1. Set up test items in the Developer Portal sandbox
+2. Use dev accounts for testing
+3. Purchases in sandbox don't charge real money
+
+### Test Purchase Flow
+
+```gdscript
+func test_purchase_flow():
+    # Query test offers
+    var offers = await query_offers()
+    if offers.is_empty():
+        print("No test offers configured")
+        return
+    
+    # Purchase first offer
+    var test_offer = offers[0]
+    print("Testing purchase: %s" % test_offer.title)
+    
+    var success = await purchase_offer(test_offer.id)
+    if success:
+        print("Test purchase succeeded")
+        
+        # Verify ownership
+        var entitlements = await query_entitlements()
+        var found = false
+        for ent in entitlements:
+            if ent.catalog_item_id == test_offer.id:
+                found = true
+                break
+        
+        if found:
+            print("✓ Ownership verified")
+        else:
+            print("✗ Ownership verification failed")
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify Ownership" icon="shield-check">
+    Always verify entitlements on your server for DLC/features
+  </Card>
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Gracefully handle purchase failures and cancellations
+  </Card>
+  <Card title="Cache Offers" icon="database">
+    Cache catalog queries to reduce API calls
+  </Card>
+  <Card title="Test Thoroughly" icon="vial">
+    Test all purchase flows in sandbox before production
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Cannot query offers">
+  - Verify you're logged in with Epic Account Services (not just Connect)
+  - Check that offers are configured in the Developer Portal
+  - Ensure the sandbox/deployment ID is correct
+  - Verify ecommerce permissions in client policy
+</Accordion>
+
+<Accordion title="Purchase fails immediately">
+  - Check that the offer ID is correct and active
+  - Verify the player has payment methods set up
+  - Ensure the catalog namespace is correct
+  - Check EOS SDK logs for detailed error messages
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/features/authentication-methods">
+    Epic Account Services login required for ecommerce
+  </Card>
+  <Card title="Ecom API Reference" icon="code" href="/reference/ecom-interface">
+    Complete ecommerce API documentation
+  </Card>
+</CardGroup>

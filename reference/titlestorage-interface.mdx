@@ -1,0 +1,222 @@
+---
+title: TitleStorage Interface
+description: API reference for the EOS TitleStorage Interface in Godot
+---
+
+The TitleStorage Interface provides read-only cloud storage for game-wide data.
+
+## Overview
+
+The TitleStorage Interface allows:
+
+- Downloading game configuration files
+- Accessing game-wide data (not player-specific)
+- Querying file metadata
+- Cache management
+
+Files are read-only and managed through the Epic Games Developer Portal.
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### titlestorage_interface_query_file
+
+```gdscript
+IEOS.titlestorage_interface_query_file(options: RefCounted) -> void
+```
+
+Queries metadata for a specific file.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID (for authentication)
+  - `filename` - Filename string
+  - `client_data` - Optional user data
+
+**Callback Signal:** `titlestorage_interface_query_file_callback`
+
+### titlestorage_interface_query_file_list
+
+```gdscript
+IEOS.titlestorage_interface_query_file_list(options: RefCounted) -> void
+```
+
+Queries the list of available files by tags.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `list_of_tags` - Array of tag strings to filter files
+  - `client_data` - Optional user data
+
+**Callback Signal:** `titlestorage_interface_query_file_list_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Product User ID
+- `file_count` - Number of files matching tags
+
+### titlestorage_interface_read_file
+
+```gdscript
+IEOS.titlestorage_interface_read_file(options: RefCounted) -> Variant
+```
+
+Reads a file from title storage.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+  - `read_chunk_length_bytes` - Chunk size for reading
+  - `client_data` - Optional user data
+
+**Returns:** EOSGFileTransferRequest object
+
+**Signals:**
+- `titlestorage_interface_read_file_data_callback` - Called for each data chunk
+- `titlestorage_interface_file_transfer_progress_callback` - Progress updates
+- `titlestorage_interface_read_file_callback` - Called when complete
+
+### titlestorage_interface_get_file_metadata_count
+
+```gdscript
+IEOS.titlestorage_interface_get_file_metadata_count(options: RefCounted) -> int
+```
+
+Gets the count of cached file metadata.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+
+**Returns:** Number of files
+
+### titlestorage_interface_copy_file_metadata_by_filename
+
+```gdscript
+IEOS.titlestorage_interface_copy_file_metadata_by_filename(options: RefCounted) -> Dictionary
+```
+
+Copies file metadata by filename.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `filename` - Filename string
+
+**Returns:** Dictionary with `result_code` and `metadata`
+
+### titlestorage_interface_copy_file_metadata_at_index
+
+```gdscript
+IEOS.titlestorage_interface_copy_file_metadata_at_index(options: RefCounted) -> Dictionary
+```
+
+Copies file metadata by index.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `index` - File index
+
+**Returns:** Dictionary with `result_code` and `metadata`
+
+### titlestorage_interface_delete_cache
+
+```gdscript
+IEOS.titlestorage_interface_delete_cache(options: RefCounted) -> int
+```
+
+Deletes locally cached files.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Product User ID
+  - `client_data` - Optional user data
+
+**Returns:** EOS_EResult
+
+**Callback Signal:** `titlestorage_interface_delete_cache_callback`
+
+## Example Usage
+
+```gdscript
+# Query files by tags
+var query_options = {
+    "local_user_id": product_user_id,
+    "list_of_tags": ["config", "levels"]
+}
+
+IEOS.titlestorage_interface_query_file_list_callback.connect(_on_files_queried)
+IEOS.titlestorage_interface_query_file_list(query_options)
+
+func _on_files_queried(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        print("Found ", data.file_count, " files")
+        var count = IEOS.titlestorage_interface_get_file_metadata_count({
+            "local_user_id": product_user_id
+        })
+        for i in range(count):
+            var metadata = IEOS.titlestorage_interface_copy_file_metadata_at_index({
+                "local_user_id": product_user_id,
+                "index": i
+            })
+            print("File: ", metadata.metadata)
+
+# Read a configuration file
+var read_options = {
+    "local_user_id": product_user_id,
+    "filename": "game_config.json",
+    "read_chunk_length_bytes": 4096
+}
+
+var file_data = PackedByteArray()
+
+IEOS.titlestorage_interface_read_file_data_callback.connect(_on_data_chunk)
+IEOS.titlestorage_interface_read_file_callback.connect(_on_file_read)
+
+var read_request = IEOS.titlestorage_interface_read_file(read_options)
+
+func _on_data_chunk(data: Dictionary):
+    file_data.append_array(data.data_chunk)
+
+func _on_file_read(data: Dictionary):
+    if data.result_code == EOS_EResult.EOS_Success:
+        var config_json = file_data.get_string_from_utf8()
+        var config = JSON.parse_string(config_json)
+        print("Config loaded: ", config)
+```
+
+## Use Cases
+
+TitleStorage is ideal for:
+
+- Game configuration files
+- Level data
+- Localization files
+- Asset manifests
+- Event data
+- Any read-only game-wide data
+
+## Managing Files
+
+Files must be uploaded through the Epic Games Developer Portal:
+
+1. Log in to the Developer Portal
+2. Navigate to your application
+3. Go to Game Services > Title Storage
+4. Upload files and assign tags
+
+## Notes
+
+- Files are read-only from the client perspective
+- Files are shared across all players
+- Use tags to organize and query files efficiently
+- Files are cached locally after download
+- Maximum file size is configurable in the Developer Portal
+
+## See Also
+
+- [PlayerDataStorage Interface](/reference/playerdatastorage-interface) - Player-specific cloud storage

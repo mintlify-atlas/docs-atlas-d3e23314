@@ -1,0 +1,404 @@
+---
+title: P2P networking
+description: Implement peer-to-peer multiplayer connections with Epic Online Services
+---
+
+Epic Online Services provides robust peer-to-peer (P2P) networking with NAT traversal, relay servers, and Godot's high-level multiplayer API integration. EOSG makes it easy through the `HP2P` class and `EOSGMultiplayerPeer`.
+
+## Overview
+
+EOS P2P networking features:
+- **NAT Traversal**: Automatic hole-punching for direct connections
+- **Relay Servers**: Fallback when direct connections aren't possible
+- **Multiple Channels**: Organize traffic by channel ID
+- **Godot Integration**: Works with `MultiplayerAPI` and RPCs
+- **Cross-Platform**: Supports all EOSG platforms
+
+## Architecture
+
+EOS P2P supports three network topologies:
+
+### 1. Server-Client (Recommended)
+
+One player hosts as server, others connect as clients:
+
+```
+     Server (Peer ID 1)
+       /     |     \
+   Client  Client  Client
+  (ID 2)  (ID 3)  (ID 4)
+```
+
+### 2. Mesh (Peer-to-Peer)
+
+All players connect to each other:
+
+```
+   Player 1 ―――― Player 2
+      |    ×      |
+   Player 3 ―――― Player 4
+```
+
+### 3. Client-Only
+
+Connect to a single server:
+
+```
+   Client ――――> Server
+```
+
+## Using EOSGMultiplayerPeer
+
+`EOSGMultiplayerPeer` implements Godot's `MultiplayerPeer` interface, giving you access to RPCs, multiplayer synchronization, and all of Godot's networking features.
+
+### Server Mode
+
+Create a server that others can connect to:
+
+```gdscript
+func create_server():
+    var peer = EOSGMultiplayerPeer.new()
+    
+    # Create server on socket "game", channel 0
+    var error = peer.create_server("game", 0)
+    if error != OK:
+        printerr("Failed to create server: %d" % error)
+        return
+    
+    # Auto-accept all connection requests
+    peer.set_server_auto_accept_connection_requests(true)
+    
+    # Set as multiplayer peer
+    multiplayer.multiplayer_peer = peer
+    
+    print("Server created! Listening for connections...")
+    
+    # Listen for peer connections
+    multiplayer.peer_connected.connect(_on_peer_connected)
+    multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+
+func _on_peer_connected(peer_id: int):
+    print("Player connected: %d" % peer_id)
+
+func _on_peer_disconnected(peer_id: int):
+    print("Player disconnected: %d" % peer_id)
+```
+
+### Client Mode
+
+Connect to a server:
+
+```gdscript
+func connect_to_server(server_user_id: String):
+    var peer = EOSGMultiplayerPeer.new()
+    
+    # Connect to server's socket "game", channel 0
+    var error = peer.create_client(server_user_id, "game", 0)
+    if error != OK:
+        printerr("Failed to connect: %d" % error)
+        return
+    
+    multiplayer.multiplayer_peer = peer
+    
+    print("Connecting to server: %s" % server_user_id)
+    
+    # Wait for connection
+    multiplayer.connected_to_server.connect(_on_connected_to_server)
+    multiplayer.connection_failed.connect(_on_connection_failed)
+
+func _on_connected_to_server():
+    print("Connected to server successfully!")
+
+func _on_connection_failed():
+    printerr("Failed to connect to server")
+```
+
+### Mesh Mode
+
+For games where everyone connects to everyone:
+
+```gdscript
+func create_mesh_network():
+    var peer = EOSGMultiplayerPeer.new()
+    
+    # Create mesh network on socket "game", channel 0
+    var error = peer.create_mesh("game", 0)
+    if error != OK:
+        printerr("Failed to create mesh: %d" % error)
+        return
+    
+    multiplayer.multiplayer_peer = peer
+    
+    print("Mesh network created")
+
+func add_mesh_peer(peer_user_id: String):
+    var peer: EOSGMultiplayerPeer = multiplayer.multiplayer_peer
+    
+    # Add a peer to connect to
+    var error = peer.add_mesh_peer(peer_user_id)
+    if error != OK:
+        printerr("Failed to add mesh peer: %d" % error)
+```
+
+## Using RPCs
+
+Once `EOSGMultiplayerPeer` is set up, you can use Godot's RPC system:
+
+```gdscript
+extends Node
+
+# Call this on all clients
+@rpc("any_peer", "call_local")
+func player_shoot(position: Vector3, direction: Vector3):
+    create_bullet(position, direction)
+    print("Player shot at %v" % position)
+
+# Call this on server only
+@rpc("any_peer", "call_remote")
+func request_spawn(player_name: String):
+    if not multiplayer.is_server():
+        return
+    
+    var peer_id = multiplayer.get_remote_sender_id()
+    spawn_player(peer_id, player_name)
+
+# Server tells clients to spawn a player
+@rpc("authority", "call_local")
+func spawn_player(peer_id: int, player_name: String):
+    var player = preload("res://player.tscn").instantiate()
+    player.name = str(peer_id)
+    player.set_multiplayer_authority(peer_id)
+    add_child(player)
+
+func _input(event):
+    if event.is_action_pressed("shoot"):
+        # Call on all peers including self
+        player_shoot.rpc(global_position, get_shoot_direction())
+```
+
+## Low-Level P2P (Without EOSGMultiplayerPeer)
+
+For custom networking protocols, use the P2P interface directly:
+
+### Sending Packets
+
+```gdscript
+func send_custom_packet(target_user_id: String, data: PackedByteArray):
+    var opts = EOS.P2P.SendPacketOptions.new()
+    opts.socket_id = {socket_name = "game", channel = 0}
+    opts.remote_user_id = target_user_id
+    opts.data = data
+    opts.allow_delayed_delivery = true
+    opts.reliability = EOS.P2P.PacketReliability.ReliableOrdered
+    
+    var result = EOS.P2P.P2PInterface.send_packet(opts)
+    if not EOS.is_success(result):
+        printerr("Failed to send packet: %s" % EOS.result_str(result))
+```
+
+### Receiving Packets
+
+```gdscript
+func _process(_delta):
+    # Poll for incoming packets
+    while true:
+        var opts = EOS.P2P.ReceivePacketOptions.new()
+        opts.requested_channel = 0
+        
+        var result = EOS.P2P.P2PInterface.receive_packet(opts)
+        
+        if result.result_code == EOS.Result.NotFound:
+            # No more packets
+            break
+        
+        if not EOS.is_success(result.result_code):
+            printerr("Failed to receive packet")
+            break
+        
+        # Process packet
+        var sender = result.remote_user_id
+        var data = result.data
+        var channel = result.channel
+        
+        handle_packet(sender, data, channel)
+
+func handle_packet(sender: String, data: PackedByteArray, channel: int):
+    print("Received %d bytes from %s on channel %d" % [data.size(), sender, channel])
+    # Process the packet data
+```
+
+## NAT Traversal and Relay
+
+### Check NAT Type
+
+```gdscript
+func check_nat_type():
+    var nat_type = await HP2P.get_nat_type_async()
+    
+    match nat_type:
+        EOS.P2P.NATType.Open:
+            print("Open NAT - Direct connections will work")
+        EOS.P2P.NATType.Moderate:
+            print("Moderate NAT - Most connections will work")
+        EOS.P2P.NATType.Strict:
+            print("Strict NAT - May need relay servers")
+        EOS.P2P.NATType.Unknown:
+            print("NAT type unknown")
+```
+
+### Configure Relay Usage
+
+```gdscript
+func configure_relay():
+    # Always allow relay
+    HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)
+    
+    # Force relay (for testing)
+    # HP2P.set_relay_control(EOS.P2P.RelayControl.ForceRelays)
+    
+    # No relay (direct only)
+    # HP2P.set_relay_control(EOS.P2P.RelayControl.NoRelays)
+    
+    print("Relay control set")
+```
+
+### Set Port Range
+
+```gdscript
+func configure_ports():
+    # Use ports 7777-7787
+    var result = HP2P.set_port_range(7777, 10)
+    if EOS.is_success(result):
+        print("Port range configured: 7777-7787")
+```
+
+## Complete Multiplayer Example
+
+```gdscript
+extends Node
+
+var lobby: HLobby = null
+var is_host = false
+
+func create_and_host_lobby():
+    # Create lobby
+    var opts = EOS.Lobby.CreateLobbyOptions.new()
+    opts.max_lobby_members = 4
+    opts.permission_level = EOS.Lobby.LobbyPermissionLevel.Publicadvertised
+    
+    lobby = await HLobbies.create_lobby_async(opts)
+    if not lobby:
+        printerr("Failed to create lobby")
+        return
+    
+    is_host = true
+    
+    # Set up server
+    var peer = EOSGMultiplayerPeer.new()
+    peer.create_server("game", 0)
+    peer.set_server_auto_accept_connection_requests(true)
+    multiplayer.multiplayer_peer = peer
+    
+    # Listen for players joining lobby
+    lobby.member_joined.connect(_on_member_joined)
+    
+    print("Hosting lobby and server")
+
+func _on_member_joined(member_id: String):
+    print("Player joined lobby: %s" % member_id)
+    # They will automatically connect via P2P
+
+func join_and_connect_lobby(lobby_to_join: HLobby):
+    # Join lobby
+    lobby = await HLobbies.join_async(lobby_to_join)
+    if not lobby:
+        printerr("Failed to join lobby")
+        return
+    
+    is_host = false
+    
+    # Connect to host's server
+    var host_id = lobby.owner_id
+    
+    var peer = EOSGMultiplayerPeer.new()
+    peer.create_client(host_id, "game", 0)
+    multiplayer.multiplayer_peer = peer
+    
+    multiplayer.connected_to_server.connect(_on_connected_to_host)
+    
+    print("Connecting to host: %s" % host_id)
+
+func _on_connected_to_host():
+    print("Connected to host's game server!")
+    request_spawn.rpc_id(1, HAuth.display_name)  # Tell server to spawn us
+
+@rpc("any_peer", "call_remote")
+func request_spawn(player_name: String):
+    if not is_host:
+        return
+    
+    var peer_id = multiplayer.get_remote_sender_id()
+    print("Spawning player %s (ID: %d)" % [player_name, peer_id])
+    
+    # Spawn on all clients
+    spawn_player.rpc(peer_id, player_name)
+
+@rpc("authority", "call_local")
+func spawn_player(peer_id: int, player_name: String):
+    var player = preload("res://player.tscn").instantiate()
+    player.name = str(peer_id)
+    player.player_name = player_name
+    player.set_multiplayer_authority(peer_id)
+    add_child(player)
+    print("Spawned player: %s" % player_name)
+```
+
+## Troubleshooting
+
+<Accordion title="Cannot connect to other players">
+  - Check both players are logged in and have valid Product User IDs
+  - Verify socket names and channel IDs match
+  - Try enabling relay servers with `HP2P.set_relay_control(EOS.P2P.RelayControl.AllowRelays)`
+  - Check firewall settings
+</Accordion>
+
+<Accordion title="High latency">
+  - Check NAT type - Strict NAT may force relay usage
+  - Ensure port range is not blocked by firewall
+  - Use relay control to prefer direct connections
+  - Check players are in the same region (use lobby bucket_id)
+</Accordion>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Server-Client" icon="server">
+    Server-client is more reliable than mesh for most games
+  </Card>
+  <Card title="Enable Relays" icon="arrows-rotate">
+    Always allow relay servers as fallback
+  </Card>
+  <Card title="Validate Packets" icon="shield-check">
+    Never trust client data - validate on the server
+  </Card>
+  <Card title="Handle Disconnects" icon="plug">
+    Listen to peer_disconnected and clean up resources
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Lobbies" icon="users" href="/features/lobbies-sessions">
+    Set up lobbies before P2P connections
+  </Card>
+  <Card title="Voice Chat" icon="microphone" href="/features/voice-rtc">
+    Add voice communication
+  </Card>
+  <Card title="EOSGMultiplayerPeer API" icon="code" href="/reference/eosg-multiplayer-peer">
+    Complete API reference
+  </Card>
+  <Card title="Multiplayer Guide" icon="book" href="/guides/multiplayer-setup">
+    Step-by-step multiplayer setup
+  </Card>
+</CardGroup>

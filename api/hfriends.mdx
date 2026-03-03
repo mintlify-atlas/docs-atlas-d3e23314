@@ -1,0 +1,92 @@
+---
+title: HFriends
+description: Query friends list from Epic Account Services
+---
+
+## Overview
+
+HFriends provides methods to query the user's friends list from Epic Account Services.
+
+<Note>
+The HFriends API requires the user to be logged in with Epic Account Services. See [HAuth](/api/hauth) for authentication methods.
+</Note>
+
+## Methods
+
+### get_friends_async
+
+```gdscript
+func get_friends_async() -> Array
+```
+
+Returns an array of user info dictionaries representing all the user's friends.
+
+**Returns:** Array of dictionaries with user information. Each dictionary contains the same keys as [HAuth.get_user_info_async()](/api/hauth#get_user_info_async):
+- `user_id: String`
+- `country: String`
+- `display_name: String`
+- `display_name_sanitized: String`
+- `preferred_language: String`
+- `nickname: String`
+
+**Example:**
+```gdscript
+var friends = await HFriends.get_friends_async()
+print("You have ", friends.size(), " friends")
+
+for friend in friends:
+    print(friend.display_name, " (", friend.user_id, ")")
+```
+
+Source: [hfriends.gd:32](https://github.com/YOUR_REPO/hfriends.gd#L32)
+
+## Usage Example
+
+```gdscript
+extends Node
+
+func _ready():
+    # Wait for user to log in
+    await HAuth.logged_in_auth
+    
+    # Load friends list
+    await load_friends()
+
+func load_friends():
+    var friends = await HFriends.get_friends_async()
+    
+    if friends.is_empty():
+        print("No friends found")
+        return
+    
+    # Display friends in UI
+    for friend in friends:
+        add_friend_to_list(friend)
+
+func add_friend_to_list(friend_info: Dictionary):
+    var label = Label.new()
+    label.text = friend_info.display_name
+    $FriendsList.add_child(label)
+```
+
+## Requirements
+
+<Warning>
+The friends list is only available when logged in with Epic Account Services. Make sure to:
+1. Use `HAuth.login_async()` or another Epic Account Services login method
+2. Include `EOS.Auth.ScopeFlags.FriendsList` in your `auth_login_scope_flags`
+</Warning>
+
+The default `HAuth.auth_login_scope_flags` already includes `FriendsList`, so you typically don't need to modify it:
+
+```gdscript
+# Default scope flags (already set)
+HAuth.auth_login_scope_flags = EOS.Auth.ScopeFlags.BasicProfile | EOS.Auth.ScopeFlags.Presence | EOS.Auth.ScopeFlags.FriendsList
+```
+
+## Best Practices
+
+1. **Cache friends list**: Store the friends list locally and refresh periodically rather than querying every time
+2. **Handle empty lists**: Always check if the returned array is empty before processing
+3. **Update on login**: Fetch the friends list after successful login to Epic Account Services
+4. **Display names**: Use `display_name` for showing friend names in your UI

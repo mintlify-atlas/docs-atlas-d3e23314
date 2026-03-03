@@ -1,0 +1,260 @@
+---
+title: Initialization
+description: Learn how to initialize the Epic Online Services SDK in your Godot project
+---
+
+Before using any Epic Online Services features, you must initialize the EOS SDK and create a platform instance. This guide covers both the High Level and GDExtension approaches.
+
+## Prerequisites
+
+You'll need the following credentials from the [Epic Games Developer Portal](https://dev.epicgames.com/portal):
+
+- **Product ID** - Identifies your game/application
+- **Sandbox ID** - Identifies your development environment
+- **Deployment ID** - Identifies your deployment configuration
+- **Client ID** - OAuth client identifier
+- **Client Secret** - OAuth client secret
+
+You'll also need to provide:
+
+- **Product Name** - Your game's name (max 64 characters)
+- **Product Version** - Your game's version (e.g., "1.0")
+- **Encryption Key** - (Optional) A 256-bit key in hexadecimal format (64 hex characters)
+
+## High Level Initialization (Recommended)
+
+The High Level API provides a simple, one-line setup method through the `HPlatform` autoload class.
+
+### Basic Setup
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Configure logging level
+    HLog.log_level = HLog.LogLevel.INFO
+
+    # Create credentials object
+    var credentials = HCredentials.new()
+    credentials.product_name = "My Game"
+    credentials.product_version = "1.0"
+    credentials.product_id = "YOUR_PRODUCT_ID"
+    credentials.sandbox_id = "YOUR_SANDBOX_ID"
+    credentials.deployment_id = "YOUR_DEPLOYMENT_ID"
+    credentials.client_id = "YOUR_CLIENT_ID"
+    credentials.client_secret = "YOUR_CLIENT_SECRET"
+    # Optional encryption key
+    credentials.encryption_key = "YOUR_64_CHAR_ENCRYPTION_KEY"
+
+    # Setup EOS with automatic retry logic
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        printerr("Failed to setup EOS. See logs for more details")
+        return
+
+    print("EOS initialized successfully!")
+```
+
+The `setup_eos_async()` method handles:
+- SDK initialization with automatic retries
+- Platform creation with automatic retries
+- Default configuration for your platform
+- Cache directory setup
+- Tick budget calculation based on your target FPS
+
+### Advanced Configuration
+
+For more control, you can configure `HPlatform` properties before calling `setup_eos_async()`:
+
+```gdscript
+func _ready() -> void:
+    HLog.log_level = HLog.LogLevel.INFO
+
+    # Configure platform settings
+    HPlatform.cache_directory = ProjectSettings.globalize_path("user://eos-cache")
+    HPlatform.is_server = false
+    HPlatform.tick_budget_in_milliseconds = 5
+    HPlatform.override_country_code = "US"
+    HPlatform.override_locale_code = "en"
+    
+    # Enable social overlay on Windows
+    if OS.get_name() == "Windows":
+        HPlatform.flags = EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl
+
+    var credentials = HCredentials.new()
+    # ... set credentials ...
+
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        return
+```
+
+### Configuring EOS Logging
+
+After initialization, configure EOS SDK logging to receive debug information:
+
+```gdscript
+func _ready() -> void:
+    var credentials = HCredentials.new()
+    # ... set credentials ...
+
+    var setup_success := await HPlatform.setup_eos_async(credentials)
+    if not setup_success:
+        return
+
+    # Connect to EOS log messages
+    HPlatform.log_msg.connect(_on_eos_log_msg)
+    
+    # Set EOS SDK log level
+    var log_res := HPlatform.set_eos_log_level(
+        EOS.Logging.LogCategory.AllCategories,
+        EOS.Logging.LogLevel.Info
+    )
+    if not EOS.is_success(log_res):
+        printerr("Failed to set logging level")
+
+func _on_eos_log_msg(msg: EOS.Logging.LogMessage) -> void:
+    print("SDK %s | %s" % [msg.category, msg.message])
+```
+
+## GDExtension Initialization
+
+For advanced users who need more control, the GDExtension API provides direct access to the EOS SDK initialization process.
+
+### Two-Step Initialization
+
+GDExtension initialization requires two steps:
+1. Initialize the SDK
+2. Create the platform instance
+
+```gdscript
+extends Node
+
+func _ready() -> void:
+    # Step 1: Initialize the SDK
+    var init_opts = EOS.Platform.InitializeOptions.new()
+    init_opts.product_name = "My Game"
+    init_opts.product_version = "1.0"
+    
+    var init_res := EOS.Platform.PlatformInterface.initialize(init_opts)
+    if not EOS.is_success(init_res):
+        printerr("Failed to initialize EOS SDK: ", EOS.result_str(init_res))
+        return
+    
+    # Step 2: Create the platform
+    var create_opts = EOS.Platform.CreateOptions.new()
+    create_opts.product_id = "YOUR_PRODUCT_ID"
+    create_opts.sandbox_id = "YOUR_SANDBOX_ID"
+    create_opts.deployment_id = "YOUR_DEPLOYMENT_ID"
+    create_opts.client_id = "YOUR_CLIENT_ID"
+    create_opts.client_secret = "YOUR_CLIENT_SECRET"
+    create_opts.encryption_key = "YOUR_ENCRYPTION_KEY"
+    create_opts.cache_directory = ProjectSettings.globalize_path("user://eos-cache")
+    create_opts.is_server = false
+    create_opts.tick_budget_in_milliseconds = 5
+    
+    var create_res := EOS.Platform.PlatformInterface.create(create_opts)
+    if not EOS.is_success(create_res):
+        printerr("Failed to create EOS Platform: ", EOS.result_str(create_res))
+        return
+    
+    print("EOS Platform created successfully!")
+```
+
+### Enabling Social Overlay (Windows)
+
+To enable the Epic Games Social Overlay on Windows:
+
+```gdscript
+var create_opts = EOS.Platform.CreateOptions.new()
+# ... other settings ...
+
+if OS.get_name() == "Windows":
+    create_opts.flags = EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl
+```
+
+### Retry Logic
+
+The High Level API includes automatic retry logic (10 retries with 0.2s delay). With GDExtension, you need to implement this yourself if needed:
+
+```gdscript
+var init_res := EOS.Platform.PlatformInterface.initialize(init_opts)
+var retry_count = 10
+
+while not EOS.is_success(init_res) and retry_count > 0:
+    await get_tree().create_timer(0.2).timeout
+    init_res = EOS.Platform.PlatformInterface.initialize(init_opts)
+    retry_count -= 1
+
+if not EOS.is_success(init_res):
+    printerr("Failed to initialize after retries")
+    return
+```
+
+## Platform Shutdown
+
+When your game exits, properly shutdown the EOS platform:
+
+```gdscript
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_WM_CLOSE_REQUEST:
+        print("Shutting down EOS...")
+        EOS.Platform.PlatformInterface.release()
+        var res := EOS.Platform.PlatformInterface.shutdown()
+        if not EOS.is_success(res):
+            printerr("Failed to shutdown EOS: ", EOS.result_str(res))
+```
+
+## Platform-Specific Initialization
+
+### Windows
+
+To use Epic Account Portal login on Windows, you must bootstrap your executable with EOS. See the [Redistributable Installer guide](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/Crossplayacrossplatforms/RedistributableInstaller/index.html).
+
+Create a `.ini` file for your Godot executable:
+
+```ini
+ApplicationPath=Godot_v4.2.0-stable_win64.exe
+WorkingDirectory=
+WaitForExit=0
+NoOperation=0
+```
+
+### Android
+
+Android requires additional setup in your Gradle build files. See the [Android Export guide](/docs/exporting/android) for complete instructions.
+
+### iOS
+
+Export your project from Godot, then open the generated Xcode project and build from there. EOSG supports iOS arm64 devices and simulators.
+
+## Signals
+
+The `HPlatform` class emits signals during initialization:
+
+```gdscript
+HPlatform.platform_initialized.connect(_on_platform_initialized)
+HPlatform.platform_created.connect(_on_platform_created)
+
+func _on_platform_initialized():
+    print("EOS SDK initialized")
+
+func _on_platform_created():
+    print("EOS Platform created")
+```
+
+## Best Practices
+
+<Warning>
+Keep your credentials private! Never commit them to version control. Consider:
+- Using environment variables
+- Encrypting scripts when exporting ([Godot docs](https://docs.godotengine.org/en/stable/development/compiling/compiling_with_script_encryption_key.html))
+- Loading credentials from secure configuration files
+</Warning>
+
+<Tip>
+- Initialize EOS as early as possible in your game's lifecycle
+- Always check return codes with `EOS.is_success()`
+- Use `HLog.LogLevel.VERBOSE` during development for detailed debugging
+- Set appropriate tick budgets based on your target FPS (the High Level API calculates this automatically)
+</Tip>

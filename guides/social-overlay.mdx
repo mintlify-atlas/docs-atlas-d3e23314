@@ -1,0 +1,335 @@
+---
+title: Social Overlay
+description: Enable and use the Windows social overlay
+---
+
+The EOS Social Overlay provides a built-in UI for friends, invites, and social features on Windows. This guide covers setup and usage.
+
+## Overview
+
+The Social Overlay includes:
+- Friends list with online status
+- Game invites and notifications
+- Block and report player functionality
+- Customizable notification position
+- Keyboard shortcuts
+
+<Warning>
+The Social Overlay is **only available on Windows**. It is not supported on Linux, macOS, mobile, or other platforms.
+</Warning>
+
+## Enabling the Overlay
+
+To enable the social overlay, configure it during EOS initialization:
+
+<Steps>
+  <Step title="Set platform flags during initialization">
+    ```gdscript
+    extends Node
+    
+    func _ready() -> void:
+        var init_opts = EOS.Platform.InitializeOptions.new()
+        init_opts.product_name = "MyGame"
+        init_opts.product_version = "1.0.0"
+        
+        var create_opts = EOS.Platform.CreateOptions.new()
+        create_opts.product_id = "YOUR_PRODUCT_ID"
+        create_opts.sandbox_id = "YOUR_SANDBOX_ID"
+        create_opts.deployment_id = "YOUR_DEPLOYMENT_ID"
+        create_opts.client_id = "YOUR_CLIENT_ID"
+        create_opts.client_secret = "YOUR_CLIENT_SECRET"
+        create_opts.encryption_key = "YOUR_ENCRYPTION_KEY"
+        
+        # Enable Social Overlay on Windows
+        if OS.get_name() == "Windows":
+            HAuth.auth_login_flags = EOS.Auth.LoginFlags.None
+            create_opts.flags = EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl
+        
+        # Initialize EOS
+        await HPlatform.initialize_async(init_opts)
+        await HPlatform.create_platform_async(create_opts)
+    ```
+    
+    <Note>
+    For OpenGL rendering, use `WindowsEnableOverlayOpengl`. For DirectX, use the appropriate DirectX flag.
+    </Note>
+  </Step>
+
+  <Step title="Verify overlay is enabled">
+    After initialization, listen for overlay visibility changes:
+    
+    ```gdscript
+    func _ready():
+        # ... initialization code
+        
+        IEOS.ui_interface_display_settings_updated_callback.connect(
+            _on_overlay_visibility_changed
+        )
+    
+    func _on_overlay_visibility_changed(data: Dictionary):
+        if data.is_visible:
+            print("Social overlay is now visible")
+        else:
+            print("Social overlay is now hidden")
+    ```
+  </Step>
+</Steps>
+
+## Platform Flags Reference
+
+Choose the appropriate flag for your rendering backend:
+
+| Rendering Backend | Platform Flag |
+|-------------------|---------------|
+| OpenGL | `EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl` |
+| DirectX 9 | `EOS.Platform.PlatformFlags.WindowsEnableOverlayD3D9` |
+| DirectX 10 | `EOS.Platform.PlatformFlags.WindowsEnableOverlayD3D10` |
+| DirectX 11 | `EOS.Platform.PlatformFlags.WindowsEnableOverlayD3D11` |
+
+<Note>
+Godot 4 uses OpenGL or Vulkan by default. Use `WindowsEnableOverlayOpengl` for most cases.
+</Note>
+
+## Using the Overlay
+
+### Opening the Friends List
+
+Programmatically show the friends overlay:
+
+```gdscript
+func show_friends_overlay():
+    var options = EOS.UI.ShowFriendsOptions.new()
+    options.local_user_id = HAuth.epic_account_id
+    EOS.UI.UIInterface.show_friends(options)
+```
+
+### Keyboard Shortcut
+
+Get the default keyboard shortcut to toggle the overlay:
+
+```gdscript
+func get_overlay_shortcut() -> String:
+    var opts = EOS.UI.GetToggleFriendsKeyOptions.new()
+    var key_combination = EOS.UI.UIInterface.get_toggle_friends_key(opts)
+    
+    # Parse the key combination bitmask
+    var keys = []
+    if key_combination & EOS.UI.KeyCombination.Ctrl:
+        keys.append("Ctrl")
+    if key_combination & EOS.UI.KeyCombination.Shift:
+        keys.append("Shift")
+    if key_combination & EOS.UI.KeyCombination.Alt:
+        keys.append("Alt")
+    
+    return " + ".join(keys)  # e.g., "Shift + F3"
+```
+
+### Block Player
+
+Show the UI to block a player:
+
+```gdscript
+func show_block_player_ui(target_epic_account_id: String):
+    var opts = EOS.UI.ShowBlockPlayerOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.target_user_id = target_epic_account_id
+    EOS.UI.UIInterface.show_block_player(opts)
+    
+    # Wait for result
+    var result = await IEOS.ui_interface_show_block_player_callback
+    print("Block player result: ", EOS.result_str(result))
+```
+
+### Report Player
+
+Show the UI to report a player:
+
+```gdscript
+func show_report_player_ui(target_epic_account_id: String):
+    var opts = EOS.UI.ShowReportPlayerOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    opts.target_user_id = target_epic_account_id
+    EOS.UI.UIInterface.show_report_player(opts)
+    
+    # Wait for result
+    var result = await IEOS.ui_interface_show_report_player_callback
+    print("Report player result: ", EOS.result_str(result))
+```
+
+## Notification Settings
+
+### Get Notification Location
+
+Check where notifications appear on screen:
+
+```gdscript
+func get_notification_location():
+    var location = EOS.UI.UIInterface.get_notification_location_preference()
+    
+    match location:
+        EOS.UI.NotificationLocation.TopLeft:
+            print("Notifications in top-left")
+        EOS.UI.NotificationLocation.TopRight:
+            print("Notifications in top-right")
+        EOS.UI.NotificationLocation.BottomLeft:
+            print("Notifications in bottom-left")
+        EOS.UI.NotificationLocation.BottomRight:
+            print("Notifications in bottom-right")
+```
+
+### Set Notification Location
+
+Change where notifications appear:
+
+```gdscript
+func set_notification_location(location: EOS.UI.NotificationLocation):
+    var opts = EOS.UI.SetNotificationLocationPreferenceOptions.new()
+    opts.notification_location = location
+    
+    var result = EOS.UI.UIInterface.set_notification_location_preference(opts)
+    if EOS.is_success(result):
+        print("Notification location updated")
+```
+
+## Overlay Visibility State
+
+Monitor overlay visibility to pause your game when it's open:
+
+```gdscript
+class_name OverlayManager
+extends Node
+
+var is_overlay_visible: bool = false
+
+func _ready():
+    IEOS.ui_interface_display_settings_updated_callback.connect(
+        _on_display_settings_updated
+    )
+
+func _on_display_settings_updated(data: Dictionary):
+    is_overlay_visible = data.is_visible
+    
+    if is_overlay_visible:
+        # Pause game when overlay is open
+        get_tree().paused = true
+    else:
+        # Resume game when overlay closes
+        get_tree().paused = false
+```
+
+## Complete Example
+
+Here's a complete UI manager for the social overlay:
+
+```gdscript
+extends Control
+
+@onready var friends_btn: Button = %ShowFriendsBtn
+@onready var overlay_status: Label = %OverlayStatusLabel
+@onready var notification_location_label: Label = %NotificationLocationLabel
+
+func _ready():
+    # Only show overlay features on Windows
+    if OS.get_name() != "Windows":
+        hide()
+        return
+    
+    # Connect buttons
+    friends_btn.pressed.connect(_on_show_friends_pressed)
+    
+    # Listen for overlay changes
+    IEOS.ui_interface_display_settings_updated_callback.connect(
+        _on_display_settings_updated
+    )
+    
+    # Display current settings
+    _update_notification_location()
+
+func _on_show_friends_pressed():
+    var opts = EOS.UI.ShowFriendsOptions.new()
+    opts.local_user_id = HAuth.epic_account_id
+    EOS.UI.UIInterface.show_friends(opts)
+
+func _on_display_settings_updated(data: Dictionary):
+    if data.is_visible:
+        overlay_status.text = "Overlay: Visible"
+        overlay_status.modulate = Color.GREEN
+    else:
+        overlay_status.text = "Overlay: Hidden"
+        overlay_status.modulate = Color.WHITE
+
+func _update_notification_location():
+    var location = EOS.UI.UIInterface.get_notification_location_preference()
+    notification_location_label.text = "Notifications: " + \
+        EOS.UI.NotificationLocation.keys()[location]
+```
+
+## Troubleshooting
+
+### Overlay Not Appearing
+
+**Check platform flag:**
+```gdscript
+if OS.get_name() == "Windows":
+    create_opts.flags = EOS.Platform.PlatformFlags.WindowsEnableOverlayOpengl
+```
+
+**Verify rendering backend:**
+- Make sure you're using the correct flag for your renderer
+- Godot 4 defaults to Forward+ (OpenGL/Vulkan)
+
+**Check login flags:**
+```gdscript
+HAuth.auth_login_flags = EOS.Auth.LoginFlags.None
+```
+
+### Overlay Shows But Friends List is Empty
+
+- Ensure the user is logged in with Epic Account (not just Product User ID)
+- Check that friends permissions are enabled in your EOS Product settings:
+  - Go to Developer Portal → Product Settings → Permissions
+  - Enable "Basic Profile", "Online Presence", and "Friends"
+
+### Overlay Crashes the Game
+
+- Verify you're using the correct platform flag for your rendering backend
+- Try disabling vsync if using OpenGL
+- Check that you're on Windows (overlay doesn't work on other platforms)
+
+### Keyboard Shortcut Not Working
+
+- The default shortcut is usually `Shift + F3`
+- Check if another application is intercepting the shortcut
+- Verify the overlay is properly enabled
+
+## Platform Limitations
+
+| Platform | Overlay Support |
+|----------|----------------|
+| Windows | ✅ Full support |
+| Linux | ❌ Not supported |
+| macOS | ❌ Not supported |
+| Android | ❌ Not supported |
+| iOS | ❌ Not supported |
+
+For non-Windows platforms, implement your own friends UI using the `HFriends` API.
+
+## Alternative: Custom Friends UI
+
+If you need cross-platform friends functionality:
+
+```gdscript
+# Get friends list programmatically (works on all platforms)
+func get_friends_list():
+    var friends = await HFriends.query_friends_async()
+    for friend in friends:
+        print(friend.display_name, " - ", friend.presence_status)
+```
+
+See the Friends API documentation for building a custom friends UI.
+
+## Next Steps
+
+- Explore the UIView sample scene in the plugin
+- Learn about [multiplayer setup](/guides/multiplayer-setup) for game invites
+- Check EOS documentation on [Social Overlay Design Guidelines](https://dev.epicgames.com/docs/services/en-US/EpicAccountServices/DesignGuidelines/index.html)

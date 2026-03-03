@@ -1,0 +1,60 @@
+---
+title: 'HFriends'
+description: 'Friends list management for Epic Online Services'
+---
+
+## Overview
+
+The `HFriends` class provides methods for querying the user's friends list. It requires Epic Account Services authentication.
+
+## Methods
+
+### get_friends_async
+
+```gdscript
+func get_friends_async() -> Array
+```
+
+Returns an Array of user info Dictionary representing all the user's friends.
+
+<ResponseField name="return" type="Array">
+  Array of user info dictionaries. Each dictionary contains the same keys as returned by `HAuth.get_user_info_async`:
+  - `user_id`: String
+  - `country`: String
+  - `display_name`: String
+  - `display_name_sanitized`: String
+  - `preferred_language`: String
+  - `nickname`: String
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var friends = await HFriends.get_friends_async()
+for friend in friends:
+    print("Friend: ", friend.display_name)
+    print("User ID: ", friend.user_id)
+```
+
+**Complete Usage Example:**
+
+```gdscript
+# First, ensure user is logged in with Epic Account Services
+var login_success = await HAuth.login_account_portal_async()
+if not login_success:
+    print("Failed to login")
+    return
+
+# Query friends list
+var friends = await HFriends.get_friends_async()
+if friends.is_empty():
+    print("No friends found")
+else:
+    print("Found ", friends.size(), " friends:")
+    for friend in friends:
+        print("  - ", friend.display_name, " (", friend.user_id, ")")
+```
+
+<Note>
+  The friends list is only available when logged in with Epic Account Services. Make sure to include `EOS.Auth.ScopeFlags.FriendsList` in your `auth_login_scope_flags` when logging in.
+</Note>

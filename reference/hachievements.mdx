@@ -1,0 +1,192 @@
+---
+title: 'HAchievements'
+description: 'Achievement management for Epic Online Services'
+---
+
+## Overview
+
+The `HAchievements` class provides methods for querying and unlocking achievements. It handles both achievement definitions and player achievement progress.
+
+## Signals
+
+### achievement_unlocked
+
+Emitted when an achievement is unlocked.
+
+```gdscript
+signal achievement_unlocked(data: Dictionary)
+```
+
+<ParamField path="data" type="Dictionary">
+  Achievement unlock data with the following keys:
+  - `achievement_id`: String
+  - `unlock_time`: int
+  - `user_id`: String
+</ParamField>
+
+## Methods
+
+### get_all_achievements_async
+
+```gdscript
+func get_all_achievements_async() -> Array[HAchievementData]
+```
+
+Returns an Array of `HAchievementData` representing all the achievements in the game.
+
+<ResponseField name="return" type="Array[HAchievementData]">
+  Array of all achievement definitions configured in the Epic Developer Portal
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var achievements = await HAchievements.get_all_achievements_async()
+for achievement in achievements:
+    print("Achievement: ", achievement.achievement_id)
+    print("Display name: ", achievement.get_display_name())
+```
+
+### get_player_achievements_async
+
+```gdscript
+func get_player_achievements_async() -> Array[HAchievementData]
+```
+
+Returns an Array of `HAchievementData` representing all the player's achievements with current progress.
+
+<ResponseField name="return" type="Array[HAchievementData]">
+  Array of player achievements with progress information
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var player_achievements = await HAchievements.get_player_achievements_async()
+for achievement in player_achievements:
+    print("Achievement: ", achievement.achievement_id)
+    print("Progress: ", achievement.progress, "%")
+    print("Unlocked: ", achievement.is_unlocked())
+```
+
+### unlock_achievement_async
+
+```gdscript
+func unlock_achievement_async(achievement_id: String) -> bool
+```
+
+Unlock a single achievement.
+
+<ParamField path="achievement_id" type="String" required>
+  The unique identifier of the achievement to unlock
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if the achievement was unlocked successfully, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var success = await HAchievements.unlock_achievement_async("first_win")
+if success:
+    print("Achievement unlocked!")
+```
+
+### unlock_achievements_async
+
+```gdscript
+func unlock_achievements_async(achievement_ids: Array) -> bool
+```
+
+Unlock multiple achievements at once.
+
+<ParamField path="achievement_ids" type="Array" required>
+  Array of achievement IDs to unlock
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  Returns `true` if all achievements were unlocked successfully, `false` otherwise
+</ResponseField>
+
+**Example:**
+
+```gdscript
+var ids = ["first_win", "ten_wins", "hundred_wins"]
+var success = await HAchievements.unlock_achievements_async(ids)
+if success:
+    print("Multiple achievements unlocked!")
+```
+
+## HAchievementData Class
+
+The `HAchievementData` class represents achievement data from Epic Online Services.
+
+### Properties
+
+- `achievement_id`: String - Achievement ID that can be used to uniquely identify the achievement
+- `unlocked_display_name`: String - Localized display name for the achievement when it has been unlocked
+- `unlocked_description`: String - Localized description for the achievement when it has been unlocked
+- `unlocked_icon_url`: String - URL of an icon to display for the achievement when it is unlocked
+- `locked_display_name`: String - Localized display name for the achievement when it is locked or hidden
+- `locked_description`: String - Localized description for the achievement when it is locked or hidden
+- `locked_icon_url`: String - URL of an icon to display for the achievement when it is locked or hidden
+- `flavor_text`: String - Localized flavor text that can be used by the game in an arbitrary manner
+- `is_hidden`: bool - Whether the achievement is hidden or not
+- `progress`: float - Progress towards completing this achievement (as a percentage)
+- `unlock_time`: int - Either `EOS.Achievements.UNLOCK_TIME_UNDEFINED` if not unlocked or the unix timestamp of when the achievement was unlocked
+- `stats`: Array - Array of Dictionary having keys: `name` (String), `current_value` (int), `threshold_value` (int)
+
+### Methods
+
+#### is_unlocked
+
+```gdscript
+func is_unlocked() -> bool
+```
+
+Returns whether this achievement is unlocked.
+
+#### get_display_name
+
+```gdscript
+func get_display_name() -> String
+```
+
+Get the appropriate display name based on whether the achievement is unlocked or not.
+
+#### get_description
+
+```gdscript
+func get_description() -> String
+```
+
+Get the appropriate description based on whether the achievement is unlocked or not.
+
+#### get_icon_url
+
+```gdscript
+func get_icon_url() -> String
+```
+
+Get the appropriate icon URL based on whether the achievement is unlocked or not.
+
+#### update_stat
+
+```gdscript
+func update_stat(p_stat: Dictionary) -> void
+```
+
+Update a stat associated with this achievement.
+
+**Example:**
+
+```gdscript
+var achievement = player_achievements[0]
+if achievement.is_unlocked():
+    print("Already unlocked: ", achievement.get_display_name())
+else:
+    print("Progress: ", achievement.progress, "%")
+    for stat in achievement.stats:
+        print("Stat: ", stat.name, " - ", stat.current_value, "/", stat.threshold_value)
+```

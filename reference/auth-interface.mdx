@@ -1,0 +1,186 @@
+---
+title: Auth Interface
+description: API reference for the EOS Auth Interface in Godot
+---
+
+The Auth Interface handles Epic Account Services authentication, allowing users to log in and manage their Epic account sessions.
+
+## Overview
+
+The Auth Interface is accessed through the `IEOS` singleton and provides methods for:
+
+- Logging in with various credential types
+- Managing authentication tokens
+- Linking and verifying accounts
+- Querying login status
+
+All methods are called on the `IEOS` singleton instance.
+
+## Methods
+
+### auth_interface_login
+
+```gdscript
+IEOS.auth_interface_login(options: RefCounted) -> void
+```
+
+Initiates a login request with the Epic Account Services.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `credentials` - Dictionary with credential information:
+    - `type` - Login credential type (EOS_ELoginCredentialType)
+    - `id` - User identifier (optional)
+    - `token` - Authentication token (optional)
+    - `external_type` - External credential type (optional)
+  - `scope_flags` - EOS_EAuthScopeFlags
+  - `login_flags` - Login flags
+  - `client_data` - Optional user data returned in callback
+
+**Callback Signal:** `auth_interface_login_callback`
+
+**Callback Parameters:**
+- `result_code` - EOS_EResult
+- `local_user_id` - Epic Account ID
+- `pin_grant_info` - PIN grant information (if applicable)
+- `continuance_token` - Token for continuing login flow
+- `selected_account_id` - Selected account ID
+- `success` - Boolean indicating success
+- `pending` - Boolean indicating if operation is pending
+
+### auth_interface_logout
+
+```gdscript
+IEOS.auth_interface_logout(options: RefCounted) -> void
+```
+
+Logs out a logged-in Epic account.
+
+**Parameters:**
+- `options` - Dictionary containing:
+  - `local_user_id` - Epic Account ID to log out
+  - `client_data` - Optional user data returned in callback
+
+**Callback Signal:** `auth_interface_logout_callback`
+
+### auth_interface_copy_id_token
+
+```gdscript
+IEOS.auth_interface_copy_id_token(options: RefCounted) -> Dictionary
+```
+
+Retrieves the ID token for an Epic account.
+
+**Returns:** Dictionary with `result_code` and `id_token`
+
+### auth_interface_copy_user_auth_token
+
+```gdscript
+IEOS.auth_interface_copy_user_auth_token(options: RefCounted, local_user_id: String) -> Dictionary
+```
+
+Copies an authentication token for the specified user.
+
+**Returns:** Dictionary with `result_code` and `token`
+
+### auth_interface_delete_persistent_auth
+
+```gdscript
+IEOS.auth_interface_delete_persistent_auth(options: RefCounted) -> void
+```
+
+Deletes persistent authentication credentials.
+
+**Callback Signal:** `auth_interface_delete_persistent_auth_callback`
+
+### auth_interface_get_logged_in_account_by_index
+
+```gdscript
+IEOS.auth_interface_get_logged_in_account_by_index(index: int) -> String
+```
+
+Returns the Epic Account ID at the specified index.
+
+**Returns:** Epic Account ID string
+
+### auth_interface_get_logged_in_accounts_count
+
+```gdscript
+IEOS.auth_interface_get_logged_in_accounts_count() -> int
+```
+
+Returns the number of currently logged-in accounts.
+
+### auth_interface_get_login_status
+
+```gdscript
+IEOS.auth_interface_get_login_status(local_user_id: String) -> int
+```
+
+Gets the login status for the specified account.
+
+**Returns:** EOS_ELoginStatus value
+
+### auth_interface_link_account
+
+```gdscript
+IEOS.auth_interface_link_account(options: RefCounted) -> void
+```
+
+Links an external account to an Epic account.
+
+**Callback Signal:** `auth_interface_link_account_callback`
+
+### auth_interface_verify_id_token
+
+```gdscript
+IEOS.auth_interface_verify_id_token(options: RefCounted) -> void
+```
+
+Verifies an ID token's validity.
+
+**Callback Signal:** `auth_interface_verify_id_token_callback`
+
+### auth_interface_verify_user_auth
+
+```gdscript
+IEOS.auth_interface_verify_user_auth(options: RefCounted) -> void
+```
+
+Verifies a user authentication token.
+
+**Callback Signal:** `auth_interface_verify_user_auth_callback`
+
+## Example Usage
+
+```gdscript
+# Connect to the login callback
+IEOS.auth_interface_login_callback.connect(_on_login_complete)
+
+# Prepare login options
+var credentials = {
+    "type": EOS_ELoginCredentialType.EOS_LCT_Developer,
+    "id": "localhost:8080",
+    "token": "user_name"
+}
+
+var options = {
+    "credentials": credentials,
+    "scope_flags": EOS_EAuthScopeFlags.EOS_AS_BasicProfile,
+    "login_flags": 0
+}
+
+# Initiate login
+IEOS.auth_interface_login(options)
+
+func _on_login_complete(data: Dictionary):
+    if data.success:
+        print("Logged in as: ", data.local_user_id)
+    else:
+        print("Login failed: ", data.result_code)
+```
+
+## See Also
+
+- [Connect Interface](/reference/connect-interface) - Product User ID authentication
+- [UserInfo Interface](/reference/userinfo-interface) - Retrieve user profile information

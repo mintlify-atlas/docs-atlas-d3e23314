@@ -1,0 +1,259 @@
+---
+title: Achievements
+description: Implement achievements and track player progress with Epic Online Services
+---
+
+Epic Online Services provides a complete achievement system that works across all platforms. EOSG makes it easy to query, unlock, and track achievement progress through the `HAchievements` class.
+
+## Overview
+
+Achievements in EOS consist of:
+- **Definitions**: Achievement metadata (name, description, icons, requirements)
+- **Player Progress**: Which achievements a user has unlocked and their progress towards others
+- **Stat Thresholds**: Requirements for unlocking (e.g., "Kill 100 enemies")
+
+## Setting Up Achievements
+
+Before using achievements in your game, you need to define them in the [Epic Games Developer Portal](https://dev.epicgames.com/portal):
+
+<Steps>
+  <Step title="Navigate to Game Services">
+    In the Developer Portal, go to your Product → Game Services → Achievements
+  </Step>
+  <Step title="Create achievements">
+    Define achievement IDs, names, descriptions, and unlock requirements
+  </Step>
+  <Step title="Configure stat thresholds">
+    Set up the stats that need to be reached to unlock each achievement
+  </Step>
+  <Step title="Deploy to your environment">
+    Publish your achievement definitions
+  </Step>
+</Steps>
+
+<Tip>
+You can bulk import achievements using the "Bulk Import" option with the sample `HelloProduct.zip` file from the EOSG sample project.
+</Tip>
+
+## Querying Achievements
+
+### Get All Achievement Definitions
+
+Retrieve all available achievements for your game:
+
+```gdscript
+var achievements: Array[HAchievementData] = await HAchievements.get_all_achievements_async()
+
+for achievement in achievements:
+    print("Achievement: %s" % achievement.achievement_id)
+    print("  Name: %s" % achievement.unlocked_display_name)
+    print("  Description: %s" % achievement.unlocked_description)
+    print("  Icon: %s" % achievement.unlocked_icon_url)
+```
+
+### Get Player Achievement Progress
+
+Query which achievements the current player has unlocked:
+
+```gdscript
+func load_player_achievements():
+    var player_achievements: Array[HAchievementData] = await HAchievements.get_player_achievements_async()
+    
+    for achievement in player_achievements:
+        if achievement.is_unlocked():
+            print("✓ Unlocked: %s" % achievement.achievement_id)
+            print("  Unlocked at: %s" % Time.get_datetime_string_from_unix_time(achievement.unlock_time))
+        else:
+            print("○ Locked: %s (Progress: %.1f%%)" % [achievement.achievement_id, achievement.progress])
+```
+
+## HAchievementData Class
+
+The `HAchievementData` class contains all information about an achievement:
+
+```gdscript
+class HAchievementData:
+    var achievement_id: String
+    var unlock_time: int  # Unix timestamp
+    var progress: float   # 0.0 to 1.0
+    
+    # Display data
+    var unlocked_display_name: String
+    var unlocked_description: String
+    var unlocked_icon_url: String
+    var locked_display_name: String
+    var locked_description: String
+    var locked_icon_url: String
+    var flavor_text: String
+    
+    # Stat thresholds
+    var stats: Array  # Array of {name, current_value, threshold_value}
+    
+    func is_unlocked() -> bool:
+        return unlock_time > 0
+    
+    func is_hidden() -> bool:
+        return locked_display_name.is_empty()
+```
+
+## Unlocking Achievements
+
+### Unlock a Single Achievement
+
+```gdscript
+func unlock_first_kill():
+    var success = await HAchievements.unlock_achievement_async("FIRST_KILL")
+    if success:
+        print("Achievement unlocked!")
+    else:
+        printerr("Failed to unlock achievement")
+```
+
+### Unlock Multiple Achievements
+
+```gdscript
+func unlock_level_completion():
+    var achievement_ids = ["LEVEL_1_COMPLETE", "SPEEDRUN_LEVEL_1"]
+    var success = await HAchievements.unlock_achievements_async(achievement_ids)
+    if success:
+        print("Multiple achievements unlocked!")
+```
+
+## Achievement Notifications
+
+Listen for achievement unlock events in real-time:
+
+```gdscript
+func _ready():
+    HAchievements.achievement_unlocked.connect(_on_achievement_unlocked)
+
+func _on_achievement_unlocked(data: Dictionary):
+    print("🏆 Achievement Unlocked: %s" % data.achievement_id)
+    print("   User: %s" % data.user_id)
+    print("   Time: %s" % Time.get_datetime_string_from_unix_time(data.unlock_time))
+    
+    # Show achievement notification UI
+    show_achievement_notification(data.achievement_id)
+```
+
+## Stat-Based Achievements
+
+Many achievements require reaching stat thresholds (e.g., "Kill 100 enemies"). Use the `HStats` class to update progress:
+
+```gdscript
+func on_enemy_killed():
+    # Increment the kill count stat
+    var stats_to_ingest = [
+        {name = "kills", amount = 1}
+    ]
+    
+    var success = await HStats.ingest_stat_async(stats_to_ingest)
+    if success:
+        # EOS automatically unlocks achievements when thresholds are met
+        print("Stat updated, checking achievements...")
+```
+
+<Note>
+When you ingest stats that meet achievement thresholds, EOS automatically unlocks the achievement and triggers the `achievement_unlocked` signal.
+</Note>
+
+## Complete Achievement UI Example
+
+Here's a complete example showing achievements in a UI:
+
+```gdscript
+extends Control
+
+@onready var achievements_list = $VBoxContainer/AchievementsList
+
+func _ready():
+    HAchievements.achievement_unlocked.connect(_on_achievement_unlocked)
+    load_achievements()
+
+func load_achievements():
+    # Get all definitions and player progress
+    var all_achievements = await HAchievements.get_all_achievements_async()
+    var player_achievements = await HAchievements.get_player_achievements_async()
+    
+    # Create a map of player progress
+    var player_progress = {}
+    for pa in player_achievements:
+        player_progress[pa.achievement_id] = pa
+    
+    # Display all achievements
+    for achievement in all_achievements:
+        var player_data = player_progress.get(achievement.achievement_id)
+        create_achievement_card(achievement, player_data)
+
+func create_achievement_card(achievement: HAchievementData, player_data):
+    var card = preload("res://achievement_card.tscn").instantiate()
+    
+    if player_data and player_data.is_unlocked():
+        card.set_title(achievement.unlocked_display_name)
+        card.set_description(achievement.unlocked_description)
+        card.set_icon(achievement.unlocked_icon_url)
+        card.set_unlocked(true)
+    else:
+        if achievement.is_hidden():
+            card.set_title("Hidden Achievement")
+            card.set_description("???")
+        else:
+            card.set_title(achievement.locked_display_name)
+            card.set_description(achievement.locked_description)
+            card.set_icon(achievement.locked_icon_url)
+        
+        if player_data:
+            card.set_progress(player_data.progress)
+    
+    achievements_list.add_child(card)
+
+func _on_achievement_unlocked(data: Dictionary):
+    # Refresh the achievements list
+    load_achievements()
+    
+    # Show notification
+    $AchievementNotification.show_unlock(data.achievement_id)
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Cache Definitions" icon="database">
+    Load achievement definitions once at startup and cache them
+  </Card>
+  <Card title="Update UI on Unlock" icon="bell">
+    Listen to the `achievement_unlocked` signal to update UI in real-time
+  </Card>
+  <Card title="Use Stats Integration" icon="chart-line">
+    Let EOS handle progress tracking through stats instead of manual unlocking
+  </Card>
+  <Card title="Test Thoroughly" icon="vial">
+    Test achievement unlocking in both online and offline scenarios
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Achievements not unlocking">
+  - Verify achievement IDs match those in the Developer Portal
+  - Check that the user is logged in with `HAuth.product_user_id`
+  - Ensure stats are being ingested correctly
+  - Check EOS SDK logs for errors
+</Accordion>
+
+<Accordion title="Progress not updating">
+  - Make sure you're calling `get_player_achievements_async()` after stat changes
+  - Verify stat names match the thresholds defined in the Developer Portal
+  - Check that stat ingestion is successful with `HStats.ingest_stat_async()`
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Stats & Leaderboards" icon="trophy" href="/features/stats-leaderboards">
+    Learn about the stats system that powers achievements
+  </Card>
+  <Card title="HAchievements API" icon="code" href="/reference/hachievements">
+    Complete API reference
+  </Card>
+</CardGroup>

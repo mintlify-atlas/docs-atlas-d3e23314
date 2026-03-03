@@ -1,0 +1,187 @@
+---
+title: Installation
+description: Install Epic Online Services Godot plugin in your Godot 4.2+ project
+---
+
+# Installation
+
+Epic Online Services Godot (EOSG) can be installed in your Godot 4.2+ project using either the Godot Asset Library or by downloading from GitHub. Both methods are straightforward and will have you up and running in minutes.
+
+## Prerequisites
+
+Before installing EOSG, ensure you have:
+
+<Steps>
+  <Step title="Godot Engine 4.2 or later">
+    Download from [Godot Engine](https://godotengine.org/download/)
+  </Step>
+  <Step title="Epic Games Account">
+    Create a free account at [Epic Games](https://www.epicgames.com/)
+  </Step>
+  <Step title="Accept EOS Terms">
+    Accept the [Epic Online Services Terms and Conditions](https://www.epicgames.com/site/en-US/tos?lang=en-US)
+  </Step>
+  <Step title="Create EOS Product">
+    Register a product for free at [Epic Developer Portal](https://dev.epicgames.com/portal)
+  </Step>
+</Steps>
+
+## Method 1: Install from Asset Library (Recommended)
+
+The Asset Library method is the easiest way to install EOSG and keep it updated.
+
+<Steps>
+  <Step title="Open AssetLib Tab">
+    In the Godot editor, navigate to the **AssetLib** tab at the top of the editor window.
+  </Step>
+  <Step title="Search for EOSG">
+    In the search bar, type `EOSG` to find the plugin.
+  </Step>
+  <Step title="Select the Plugin">
+    Click on the plugin named **Epic Online Services Godot (EOSG)** by `3ddelano`.
+    
+    [View on Godot Asset Library](https://godotengine.org/asset-library/asset/2453)
+  </Step>
+  <Step title="Download the Plugin">
+    In the popup that appears, click the **Download** button and wait for the download to complete.
+  </Step>
+  <Step title="Install the Plugin">
+    Once the download finishes, click the **Install** button.
+  </Step>
+  <Step title="Enable the Plugin">
+    Navigate to **Project → Project Settings → Plugins** and enable the **Epic Online Services Godot 4.2+ (EOSG)** plugin by checking the checkbox.
+  </Step>
+  <Step title="Restart Godot">
+    **Important:** Restart the Godot editor to ensure the plugin is fully loaded.
+  </Step>
+</Steps>
+
+<Note>
+  After installation, proceed to the [Quick Start](/quickstart) guide to set up your first EOS integration.
+</Note>
+
+## Method 2: Install from GitHub
+
+Installing from GitHub gives you access to specific platform builds and the latest release versions.
+
+<Steps>
+  <Step title="Download the Release">
+    Visit the [Releases page](https://github.com/3ddelano/epic-online-services-godot/releases/latest) and download the appropriate version:
+    
+    - **For all platforms:** Download `epic-online-services-godot-all.zip`
+    - **For specific platforms:** Download the platform-specific zip file (e.g., `epic-online-services-godot-windows.zip`)
+  </Step>
+  <Step title="Extract the Archive">
+    Extract the downloaded zip file to access the plugin folder.
+  </Step>
+  <Step title="Copy to Project">
+    Copy the `addons/epic-online-services-godot` folder from the extracted archive into your project's `res://addons/` directory.
+    
+    <Warning>
+      If the `res://addons/` folder doesn't exist in your project, create it first.
+    </Warning>
+  </Step>
+  <Step title="Enable the Plugin">
+    In the Godot editor, navigate to **Project → Project Settings → Plugins** and enable the **Epic Online Services Godot 4.2+ (EOSG)** plugin.
+  </Step>
+  <Step title="Restart Godot">
+    **Important:** Restart the Godot editor to ensure the plugin is fully loaded.
+  </Step>
+</Steps>
+
+## Verify Installation
+
+To verify that EOSG is installed correctly:
+
+<Steps>
+  <Step title="Check Plugin Status">
+    Go to **Project → Project Settings → Plugins** and confirm that **Epic Online Services Godot 4.2+ (EOSG)** is listed and enabled.
+  </Step>
+  <Step title="Test Autoload Access">
+    Open the Script editor and create a new script. Type `HAuth.` or `HPlatform.` to verify that autocomplete shows the High Level EOS classes.
+  </Step>
+  <Step title="Check for Errors">
+    Look at the Godot Output console - there should be no errors related to EOSG during startup.
+  </Step>
+</Steps>
+
+## Project Structure
+
+After installation, your project structure should look like this:
+
+```
+res://
+├── addons/
+│   └── epic-online-services-godot/
+│       ├── bin/              # Platform-specific binaries
+│       │   ├── windows/
+│       │   ├── linux/
+│       │   ├── android/
+│       │   ├── macos/
+│       │   └── ios/
+│       ├── heos/             # High Level EOS classes
+│       │   ├── hplatform.gd
+│       │   ├── hauth.gd
+│       │   ├── hachievements.gd
+│       │   ├── hleaderboards.gd
+│       │   └── ...
+│       ├── eos.gd            # GDExtension EOS bindings
+│       ├── plugin.cfg
+│       └── ...
+└── your_game_files/
+```
+
+## Platform-Specific Notes
+
+### Android
+
+For Android exports, you'll need to set up the Android build template and add EOS SDK dependencies. See the [Android Export Guide](/topics/exporting-android) for detailed instructions.
+
+### iOS
+
+EOSG supports both iOS device (arm64) and iOS simulator (arm64). Export your project for iOS and build through Xcode.
+
+### Windows
+
+Windows builds support the Social Overlay feature, which provides native Epic Games social features.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Plugin doesn't appear in the Plugins list">
+    Make sure the plugin folder is in the correct location: `res://addons/epic-online-services-godot/`
+    
+    Verify that `plugin.cfg` exists in the plugin folder.
+  </Accordion>
+  
+  <Accordion title="Errors after enabling the plugin">
+    Make sure you're using Godot 4.2 or later. EOSG is not compatible with Godot 3.x.
+    
+    Restart the Godot editor after enabling the plugin.
+  </Accordion>
+  
+  <Accordion title="Missing platform-specific binaries">
+    If you downloaded a platform-specific release, make sure it matches your target platform.
+    
+    For all-platform support, download `epic-online-services-godot-all.zip`.
+  </Accordion>
+  
+  <Accordion title="GDExtension not loading">
+    Check the Godot console for specific error messages about missing dependencies.
+    
+    On Linux, you may need to install additional libraries. Check the project README for details.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that EOSG is installed, you're ready to integrate Epic Online Services into your game!
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first "Hello EOS" example
+  </Card>
+  <Card title="Authentication" icon="key" href="/topics/authentication">
+    Learn about different login methods
+  </Card>
+</CardGroup>
